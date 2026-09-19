@@ -1,69 +1,101 @@
-import Image from "next/image";
+import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth/auth-config'
+import { PrismaClient } from '@prisma/client'
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+const prisma = new PrismaClient()
+
+export default async function HomePage() {
+  const session = await auth()
+
+  if (!session?.user) {
+    redirect('/login')
+  }
+
+  // Parent/teacher have no real destination yet — honest stub rather
+  // than pretending a dashboard exists for them.
+  if (session.user.role !== 'student') {
+    return (
+      <main style={{ maxWidth: 480, margin: '4rem auto', padding: '2rem', textAlign: 'center' }}>
+        <p style={{ color: '#111', fontSize: '1.05rem' }}>
+          {session.user.role === 'parent' ? 'Parent' : 'Teacher'} dashboards aren't available yet —
+          check back soon.
+        </p>
       </main>
-    </div>
-  );
+    )
+  }
+
+  const studentProfileId = session.user.studentProfileId
+  if (!studentProfileId) {
+    // Shouldn't happen given the signup transaction, but a real check
+    // rather than assuming the shape is always correct.
+    redirect('/login')
+  }
+
+  const scaffoldingLevels = await prisma.scaffoldingLevel.findMany({
+    where: { studentId: studentProfileId },
+    include: { chapter: { include: { subject: true } } },
+  })
+
+  const pageStyle: React.CSSProperties = {
+    maxWidth: 560,
+    margin: '0 auto',
+    padding: '2rem 1rem',
+    color: '#111',
+    background: '#fff',
+    minHeight: '100vh',
+  }
+
+  return (
+    <main style={pageStyle}>
+      <h1 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem', color: '#111' }}>
+        Welcome back, {session.user.name}
+      </h1>
+
+      {scaffoldingLevels.length === 0 && (
+        <p style={{ color: '#666' }}>
+          You don't have any chapters assigned yet — check back once your teacher sets one up.
+        </p>
+      )}
+
+      {scaffoldingLevels.map((sl) => (
+        <div
+          key={sl.id}
+          style={{
+            border: '1px solid #ddd',
+            borderRadius: 8,
+            padding: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <p style={{ fontSize: '0.75rem', color: '#666', marginBottom: '0.25rem' }}>
+            {sl.chapter.subject.name}
+          </p>
+          <h2 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111' }}>
+            {sl.chapter.name}
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '1rem' }}>
+            {sl.problemsClean} of {sl.problemsAttempted} problems answered correctly so far
+          </p>
+
+          <form action={`/api/sessions/start-and-redirect`} method="POST">
+            <input type="hidden" name="chapterId" value={sl.chapterId} />
+            <button
+              type="submit"
+              style={{
+                padding: '0.5rem 1rem',
+                color: '#fff',
+                background: '#2563eb',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+              }}
+            >
+              Continue
+            </button>
+          </form>
+        </div>
+      ))}
+    </main>
+  )
 }
