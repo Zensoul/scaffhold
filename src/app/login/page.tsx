@@ -3,11 +3,13 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { CenteredPage, sharedStyles } from '@/components/shared/page-layout'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -29,63 +31,55 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/') // redirect to home/dashboard once that exists
-  }
-
-  const pageStyle: React.CSSProperties = {
-    maxWidth: 400,
-    margin: '4rem auto',
-    padding: '2rem',
-    color: '#111',
-    background: '#fff',
+    router.push('/')
   }
 
   return (
-    <main style={pageStyle}>
+    <CenteredPage maxWidth={400}>
       <h1 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem', color: '#111' }}>
         Log in
       </h1>
 
       <form onSubmit={handleSubmit}>
-        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#444' }}>
-          Email
-        </label>
+        <label style={sharedStyles.label}>Email</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          style={{
-            width: '100%',
-            padding: '0.5rem',
-            marginBottom: '1rem',
-            color: '#111',
-            background: '#fff',
-            border: '1px solid #ccc',
-            borderRadius: 4,
-            fontSize: '1rem',
-          }}
+          style={sharedStyles.input}
         />
 
-        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', color: '#444' }}>
-          Password
-        </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{
-            width: '100%',
-            padding: '0.5rem',
-            marginBottom: '1rem',
-            color: '#111',
-            background: '#fff',
-            border: '1px solid #ccc',
-            borderRadius: 4,
-            fontSize: '1rem',
-          }}
-        />
+        <label style={sharedStyles.label}>Password</label>
+        <div style={{ position: 'relative', marginBottom: '1rem' }}>
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={{ ...sharedStyles.input, marginBottom: 0, paddingRight: '2.5rem' }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            style={{
+              position: 'absolute',
+              right: '0.5rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '0.25rem',
+              color: '#666',
+              fontSize: '1.1rem',
+              lineHeight: 1,
+            }}
+          >
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
 
         {error && (
           <p style={{ color: 'crimson', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</p>
@@ -95,20 +89,22 @@ export default function LoginPage() {
           type="submit"
           disabled={loading}
           style={{
+            ...sharedStyles.primaryButton,
             width: '100%',
-            padding: '0.6rem',
-            color: '#fff',
-            background: '#2563eb',
-            border: 'none',
-            borderRadius: 4,
-            cursor: loading ? 'default' : 'pointer',
-            fontSize: '1rem',
             opacity: loading ? 0.7 : 1,
+            cursor: loading ? 'default' : 'pointer',
           }}
         >
           {loading ? 'Logging in...' : 'Log in'}
         </button>
       </form>
-    </main>
+
+      <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#666' }}>
+        Don't have an account?{' '}
+        <a href="/register" style={{ color: '#2563eb' }}>
+          Sign up
+        </a>
+      </p>
+    </CenteredPage>
   )
 }

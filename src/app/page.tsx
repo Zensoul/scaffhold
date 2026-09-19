@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/auth-config'
 import { PrismaClient } from '@prisma/client'
+import { ContentPage } from '@/components/shared/page-layout'
 
 const prisma = new PrismaClient()
 
@@ -11,23 +12,19 @@ export default async function HomePage() {
     redirect('/login')
   }
 
-  // Parent/teacher have no real destination yet — honest stub rather
-  // than pretending a dashboard exists for them.
   if (session.user.role !== 'student') {
     return (
-      <main style={{ maxWidth: 480, margin: '4rem auto', padding: '2rem', textAlign: 'center' }}>
-        <p style={{ color: '#111', fontSize: '1.05rem' }}>
+      <ContentPage maxWidth={480}>
+        <p style={{ color: '#111', fontSize: '1.05rem', textAlign: 'center' }}>
           {session.user.role === 'parent' ? 'Parent' : 'Teacher'} dashboards aren't available yet —
           check back soon.
         </p>
-      </main>
+      </ContentPage>
     )
   }
 
   const studentProfileId = session.user.studentProfileId
   if (!studentProfileId) {
-    // Shouldn't happen given the signup transaction, but a real check
-    // rather than assuming the shape is always correct.
     redirect('/login')
   }
 
@@ -36,17 +33,8 @@ export default async function HomePage() {
     include: { chapter: { include: { subject: true } } },
   })
 
-  const pageStyle: React.CSSProperties = {
-    maxWidth: 560,
-    margin: '0 auto',
-    padding: '2rem 1rem',
-    color: '#111',
-    background: '#fff',
-    minHeight: '100vh',
-  }
-
   return (
-    <main style={pageStyle}>
+    <ContentPage maxWidth={560}>
       <h1 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem', color: '#111' }}>
         Welcome back, {session.user.name}
       </h1>
@@ -96,6 +84,6 @@ export default async function HomePage() {
           </form>
         </div>
       ))}
-    </main>
+    </ContentPage>
   )
 }

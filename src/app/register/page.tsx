@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
+import { CenteredPage, sharedStyles } from '@/components/shared/page-layout'
 
 type Role = 'student' | 'parent' | 'teacher'
 
@@ -11,6 +12,7 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState<Role>('student')
   const [grade, setGrade] = useState('10')
   const [error, setError] = useState<string | null>(null)
@@ -42,8 +44,6 @@ export default function RegisterPage() {
         return
       }
 
-      // Auto sign-in right after successful signup, so the person isn't
-      // dropped back at a login form immediately after registering.
       const signInResult = await signIn('credentials', {
         email,
         password,
@@ -53,8 +53,6 @@ export default function RegisterPage() {
       setLoading(false)
 
       if (signInResult?.error) {
-        // Account was created but auto-login failed for some reason —
-        // send them to the login page rather than leave them stuck.
         router.push('/login')
         return
       }
@@ -66,100 +64,81 @@ export default function RegisterPage() {
     }
   }
 
-  const pageStyle: React.CSSProperties = {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f5f5f5',
-    padding: '2rem 1rem',
-  }
-
-  const cardStyle: React.CSSProperties = {
-    width: '100%',
-    maxWidth: 400,
-    padding: '2rem',
-    color: '#111',
-    background: '#fff',
-    borderRadius: 8,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-  }
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '0.5rem',
-    marginBottom: '1rem',
-    color: '#111',
-    background: '#fff',
-    border: '1px solid #ccc',
-    borderRadius: 4,
-    fontSize: '1rem',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    marginBottom: '0.25rem',
-    fontSize: '0.85rem',
-    color: '#444',
-  }
-
   return (
-    <main style={pageStyle}>
-      <div style={cardStyle}>
+    <CenteredPage maxWidth={400}>
       <h1 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem', color: '#111' }}>
         Create an account
       </h1>
 
       <form onSubmit={handleSubmit}>
-        <label style={labelStyle}>Full name</label>
+        <label style={sharedStyles.label}>Full name</label>
         <input
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           required
-          style={inputStyle}
+          style={sharedStyles.input}
         />
 
-        <label style={labelStyle}>Email</label>
+        <label style={sharedStyles.label}>Email</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          style={inputStyle}
+          style={sharedStyles.input}
         />
 
-        <label style={labelStyle}>Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={8}
-          style={inputStyle}
-        />
+        <label style={sharedStyles.label}>Password</label>
+        <div style={{ position: 'relative', marginBottom: '1rem' }}>
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            style={{ ...sharedStyles.input, marginBottom: 0, paddingRight: '2.5rem' }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            style={{
+              position: 'absolute',
+              right: '0.5rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '0.25rem',
+              color: '#666',
+              fontSize: '1.1rem',
+              lineHeight: 1,
+            }}
+          >
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
 
-        <label style={labelStyle}>I am a...</label>
+        <label style={sharedStyles.label}>I am a...</label>
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as Role)}
-          style={inputStyle}
+          style={sharedStyles.input}
         >
           <option value="student">Student</option>
           <option value="parent">Parent</option>
           <option value="teacher">Teacher</option>
         </select>
 
-        {/* Grade only matters for students — StudentProfile requires it.
-            Parent/teacher accounts have no equivalent field yet, matching
-            those roles' current stub-destination status. */}
         {role === 'student' && (
           <>
-            <label style={labelStyle}>Grade</label>
+            <label style={sharedStyles.label}>Grade</label>
             <select
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              style={inputStyle}
+              style={sharedStyles.input}
             >
               <option value="9">9</option>
               <option value="10">10</option>
@@ -175,15 +154,10 @@ export default function RegisterPage() {
           type="submit"
           disabled={loading}
           style={{
+            ...sharedStyles.primaryButton,
             width: '100%',
-            padding: '0.6rem',
-            color: '#fff',
-            background: '#2563eb',
-            border: 'none',
-            borderRadius: 4,
-            cursor: loading ? 'default' : 'pointer',
-            fontSize: '1rem',
             opacity: loading ? 0.7 : 1,
+            cursor: loading ? 'default' : 'pointer',
           }}
         >
           {loading ? 'Creating account...' : 'Create account'}
@@ -196,7 +170,6 @@ export default function RegisterPage() {
           Log in
         </a>
       </p>
-      </div>
-    </main>
+    </CenteredPage>
   )
 }

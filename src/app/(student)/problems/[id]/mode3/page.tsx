@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
+import { ContentPage } from '@/components/shared/page-layout'
 
 type Mode3Response =
   | {
@@ -82,53 +83,42 @@ export default function Mode3Page() {
     setResult(json)
   }
 
-  const pageStyle: React.CSSProperties = {
-    maxWidth: 640,
-    margin: '0 auto',
-    padding: '2rem 1rem',
-    color: '#111',
-    background: '#fff',
-    minHeight: '100vh',
-  }
-
-  if (loading) return <main style={pageStyle}>Loading...</main>
-  if (error) return <main style={{ ...pageStyle, color: 'crimson' }}>{error}</main>
+  if (loading) return <ContentPage maxWidth={640}>Loading...</ContentPage>
+  if (error) return <ContentPage maxWidth={640}><span style={{ color: 'crimson' }}>{error}</span></ContentPage>
   if (!data) return null
 
   if (data.sessionEnded) {
     return (
-      <main style={pageStyle}>
+      <ContentPage maxWidth={640}>
         <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1.5rem', textAlign: 'center', marginTop: '3rem' }}>
           <p style={{ fontSize: '1.05rem', color: '#111' }}>
             {data.statement ?? 'That session is complete. Come back tomorrow.'}
           </p>
         </div>
-      </main>
+      </ContentPage>
     )
   }
 
   if (data.problemComplete) {
     return (
-      <main style={pageStyle}>
+      <ContentPage maxWidth={640}>
         <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1.5rem', textAlign: 'center', marginTop: '3rem' }}>
           <p style={{ fontSize: '1.05rem', color: '#16a34a', fontWeight: 600 }}>
             You worked through this one on your own.
           </p>
         </div>
-      </main>
+      </ContentPage>
     )
   }
 
   return (
-    <main style={pageStyle}>
+    <ContentPage maxWidth={640}>
       <p style={{ fontSize: '0.75rem', color: '#999', marginBottom: '1rem' }}>Working independently</p>
 
       <section style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111' }}>
           Problem
         </h1>
-        {/* Raw text only — deliberately no restatement, no annotations,
-            no hints. Mode 3 measures unaided understanding. */}
         <p style={{ color: '#111' }}>{data.problem.rawText}</p>
       </section>
 
@@ -203,6 +193,6 @@ export default function Mode3Page() {
           </div>
         )}
       </section>
-    </main>
+    </ContentPage>
   )
 }

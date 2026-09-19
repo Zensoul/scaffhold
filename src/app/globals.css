@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
+  --background: #f5f5f5;
   --foreground: #171717;
 }
 
@@ -12,11 +12,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Deliberately NO @media (prefers-color-scheme: dark) block.
+   This product commits to one consistent light theme for now — every
+   page built so far (Mode 1/2/3, login, register, home) assumes a
+   light background with dark text, and was written with inline styles
+   that override body's defaults on a per-page basis. Without this
+   removal, a viewer's OS/browser dark-mode setting silently flips
+   --background to near-black behind every page, which is the root
+   cause of the white-card-on-dark-void rendering bugs seen throughout
+   today's testing. A deliberate dark-mode-aware redesign is a real,
+   separate design decision to make later — not something to half-solve
+   by accident via a leftover create-next-app default. */
+
+html, body {
+  height: 100%;
 }
 
 body {

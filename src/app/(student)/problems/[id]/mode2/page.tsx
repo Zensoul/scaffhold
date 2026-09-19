@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
+import { ContentPage } from '@/components/shared/page-layout'
 
 type VisibleAnnotation = {
   id: string
@@ -154,22 +155,13 @@ export default function Mode2Page() {
     setComparisonAnswered({ selectedId: selectedOptionId, isCorrect: json.isCorrect })
   }
 
-  const pageStyle: React.CSSProperties = {
-    maxWidth: 640,
-    margin: '0 auto',
-    padding: '2rem 1rem',
-    color: '#111',
-    background: '#fff',
-    minHeight: '100vh',
-  }
-
-  if (loading) return <main style={pageStyle}>Loading...</main>
-  if (error) return <main style={{ ...pageStyle, color: 'crimson' }}>{error}</main>
+  if (loading) return <ContentPage maxWidth={640}>Loading...</ContentPage>
+  if (error) return <ContentPage maxWidth={640}><span style={{ color: 'crimson' }}>{error}</span></ContentPage>
   if (!data) return null
 
   if (data.sessionEnded) {
     return (
-      <main style={pageStyle}>
+      <ContentPage maxWidth={640}>
         <div
           style={{
             border: '1px solid #ddd',
@@ -183,14 +175,14 @@ export default function Mode2Page() {
             {data.statement ?? 'That session is complete. Come back tomorrow.'}
           </p>
         </div>
-      </main>
+      </ContentPage>
     )
   }
 
   if (data.problemComplete) {
     const sorted = [...data.annotations].sort((a, b) => a.sequenceOrder - b.sequenceOrder)
     return (
-      <main style={pageStyle}>
+      <ContentPage maxWidth={640}>
         <p style={{ color: '#16a34a', fontWeight: 600, marginBottom: '1rem' }}>
           Nicely done — you filled in every missing piece.
         </p>
@@ -231,7 +223,7 @@ export default function Mode2Page() {
         >
           Continue
         </button>
-      </main>
+      </ContentPage>
     )
   }
 
@@ -240,7 +232,7 @@ export default function Mode2Page() {
   )
 
   return (
-    <main style={pageStyle}>
+    <ContentPage maxWidth={640}>
       <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>
         {data.problem.problemType} · difficulty {data.problem.difficultyTier}
       </p>
@@ -339,7 +331,6 @@ export default function Mode2Page() {
               </form>
             )}
 
-            {/* Correct on first attempt — flat confirmation, same as before. */}
             {result && result.correct && (
               <div>
                 <p style={{ color: '#16a34a', fontWeight: 600 }}>That's right.</p>
@@ -360,7 +351,6 @@ export default function Mode2Page() {
               </div>
             )}
 
-            {/* Wrong answer with a comparison question — the new path. */}
             {result && !result.correct && result.comparisonQuestion && (
               <div>
                 <p style={{ color: '#b45309', fontWeight: 600, marginBottom: '0.75rem' }}>
@@ -428,9 +418,6 @@ export default function Mode2Page() {
               </div>
             )}
 
-            {/* Wrong answer, but no comparison question came back (shouldn't
-                normally happen given the API always generates one on a miss,
-                but kept as a safe fallback so the UI never gets stuck). */}
             {result && !result.correct && !result.comparisonQuestion && (
               <div>
                 <p style={{ color: '#b45309', fontWeight: 600 }}>
@@ -472,6 +459,6 @@ export default function Mode2Page() {
             ))}
         </ol>
       </section>
-    </main>
+    </ContentPage>
   )
 }
