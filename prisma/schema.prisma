@@ -32,6 +32,7 @@ model User {
   teacherObservations TeacherObservation[] @relation("TeacherObservations")
   observedStudents  TeacherObservation[] @relation("ObservedStudents")
   reviewedProblems  Problem[]
+  reviewedDrafts    ProblemDraft[]
   parentSummaries   ParentSummary[] @relation("ParentSummaries")
   studentSummaries  ParentSummary[] @relation("StudentParentSummaries")
 
@@ -196,6 +197,7 @@ model Chapter {
 
   subject          Subject   @relation(fields: [subjectId], references: [id])
   problems         Problem[]
+  problemDrafts    ProblemDraft[]
   scaffoldingLevels ScaffoldingLevel[]
   scaffoldingHistory ScaffoldingHistory[]
   sessions         Session[]
@@ -227,8 +229,43 @@ model Problem {
   reviewer             User?     @relation(fields: [contentReviewedBy], references: [id])
   annotations          ProblemAnnotation[]
   sessionInteractions  SessionInteraction[]
+  sourceDraft          ProblemDraft?
 
   @@map("problems")
+}
+
+model ProblemDraft {
+  id                  String      @id @default(uuid())
+  chapterId           String
+  rawText             String
+  unknownAnnotation   String?
+  concreteRestatement String?
+  givensDraft         Json?
+  impliedGivensDraft  Json?
+  conceptAnchor       String?
+  problemType         String?
+  difficultyTier      Int?
+  annotationsDraft    Json?
+  generatedByLLM      Boolean     @default(true)
+  status              DraftStatus @default(pending_review)
+  reviewedBy          String?
+  reviewedAt          DateTime?
+  reviewNotes         String?
+  publishedProblemId  String?     @unique
+  createdAt           DateTime    @default(now())
+
+  chapter          Chapter  @relation(fields: [chapterId], references: [id])
+  reviewer         User?    @relation(fields: [reviewedBy], references: [id])
+  publishedProblem Problem? @relation(fields: [publishedProblemId], references: [id])
+
+  @@map("problem_drafts")
+}
+
+enum DraftStatus {
+  pending_review
+  approved
+  rejected
+  needs_revision
 }
 
 model ProblemAnnotation {
