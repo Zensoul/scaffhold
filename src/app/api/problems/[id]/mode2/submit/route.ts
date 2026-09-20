@@ -1,13 +1,13 @@
+import { prisma } from '@/lib/db/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient, InteractionType, ScaffoldingReason } from '@prisma/client'
+import { InteractionType, ScaffoldingReason } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
-import { gradeAnswer } from '@/lib/ai/grade-answer'
-import { generateComparisonQuestion } from '@/lib/ai/comparison-question'
+import { gradeOpenTextAnswer } from '@/lib/ai/grade-open-text'
+import { moderateStudentText, recordNotificationOwed } from '@/lib/safety/content-moderation'
 
-const prisma = new PrismaClient()
 
-const LEVEL_DELTA_CORRECT = 0.05
-const LEVEL_DELTA_INCORRECT = -0.02
+const LEVEL_DELTA_CORRECT = 0.08
+const LEVEL_DELTA_INCORRECT = -0.03
 
 export async function POST(
   request: NextRequest,
@@ -15,16 +15,16 @@ export async function POST(
 ) {
   const { id: problemId } = await params
   const body = await request.json()
-  const { annotationId, studentResponse, sessionId, timeOnStepMs } = body as {
-    annotationId: string
+  const { promptType, studentResponse, sessionId, timeOnStepMs } = body as {
+    promptType: 'restate_unknown' | 'list_givens'
     studentResponse: string
     sessionId: string
     timeOnStepMs?: number
   }
 
-  if (!annotationId || typeof studentResponse !== 'string' || !sessionId) {
+  if (!promptType || typeof studentResponse !== 'string' || !sessionId) {
     return NextResponse.json(
-      { error: 'annotationId, studentResponse, and sessionId are required' },
+      { error: 'promptType, studentResponse, and sessionId are required' },
       { status: 400 }
     )
   }
@@ -36,23 +36,54 @@ export async function POST(
     return NextResponse.json({ error: 'Session is not active — start a new one' }, { status: 409 })
   }
 
-  const annotation = await prisma.problemAnnotation.findUnique({ where: { id: annotationId } })
-  if (!annotation || annotation.problemId !== problemId) {
-    return NextResponse.json({ error: 'Annotation not found for this problem' }, { status: 404 })
-  }
-
   const problem = await prisma.problem.findUnique({ where: { id: problemId } })
   if (!problem) {
     return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
   }
 
-  const { isCorrect: correct, usedLLM } = await gradeAnswer({
+  // Moderation runs BEFORE grading, always, on every piece of free text
+  // this route ever receives — this is the actual safeguard, and it
+  // must never be skippable or bypassable by any grading-path logic.
+  const moderation = await moderateStudentText({
     studentId,
     sessionId,
     problemId,
-    annotationId: annotation.id,
+    text: studentResponse,
+  })
+
+  if (moderation.flagged) {
+    await recordNotificationOwed(moderation.flaggedContentId)
+
+    // Deliberately do NOT grade this submission, do NOT reveal the
+    // flagged category to the student, and do NOT frame this as a
+    // wrong answer. A warm, non-judgmental response — this is not a
+    // moment for "incorrect."
+    return NextResponse.json({
+      correct: false,
+      feedback:
+        "Thanks for sharing that. This seems like something worth talking through with a " +
+        "parent, teacher, or someone you trust — not something to work out here. " +
+        "If you ever need to talk to someone right away, you can reach Tele-MANAS at " +
+        "14416 or 1-800-891-4416 (India), free and available 24/7 in 20 languages.",
+      moderationFlagged: true,
+    })
+  }
+
+  // Reference content for grading: unknownAnnotation for restate_unknown,
+  // a joined summary of givens (from the derived-cache JSON field) for
+  // list_givens — using the same cache field Mode 1 reads for display.
+  const referenceContent =
+    promptType === 'restate_unknown'
+      ? problem.unknownAnnotation
+      : JSON.stringify(problem.givens)
+
+  const { isCorrect: correct, feedback } = await gradeOpenTextAnswer({
+    studentId,
+    sessionId,
+    problemId,
+    promptType,
     studentResponse,
-    correctText: annotation.annotationText,
+    referenceContent,
   })
 
   const scaffoldingLevel = await prisma.scaffoldingLevel.findUnique({
@@ -61,7 +92,7 @@ export async function POST(
 
   if (!scaffoldingLevel) {
     return NextResponse.json(
-      { error: 'No scaffolding level record for this student/chapter — seed one first' },
+      { error: 'No scaffolding level record for this student/chapter' },
       { status: 422 }
     )
   }
@@ -69,18 +100,6 @@ export async function POST(
   const levelBefore = scaffoldingLevel.currentLevel
   const delta = correct ? LEVEL_DELTA_CORRECT : LEVEL_DELTA_INCORRECT
   const levelAfter = Math.max(0, Math.min(1, Number(levelBefore) + delta))
-
-  // If wrong, generate the comparison question BEFORE writing the
-  // interaction row, so we can store it alongside in one write.
-  const comparisonQuestion = correct
-    ? null
-    : await generateComparisonQuestion({
-        studentId,
-        sessionId,
-        problemId,
-        correctText: annotation.annotationText,
-        studentWrongAnswer: studentResponse,
-      })
 
   const [interaction] = await prisma.$transaction([
     prisma.sessionInteraction.create({
@@ -91,12 +110,12 @@ export async function POST(
         interactionType: correct
           ? InteractionType.annotation_correct
           : InteractionType.annotation_incorrect,
-        annotationId: annotation.id,
+        annotationId: null, // Mode 3 has no specific annotation being answered
+        mode3PromptType: promptType,
         studentResponse,
         isCorrect: correct,
         scaffoldingLevelAt: levelAfter,
         timeOnStepMs,
-        comparisonData: comparisonQuestion ? JSON.parse(JSON.stringify(comparisonQuestion)) : undefined,
       },
     }),
     prisma.scaffoldingLevel.update({
@@ -130,21 +149,9 @@ export async function POST(
 
   return NextResponse.json({
     correct,
-    correctAnswer: correct ? undefined : annotation.annotationText,
+    feedback,
     levelBefore,
     levelAfter,
     interactionId: interaction.id,
-    gradedByLLM: usedLLM,
-    // Present only when wrong — the UI shows this instead of a flat reveal.
-    comparisonQuestion: comparisonQuestion
-      ? {
-          interactionId: interaction.id, // needed for the follow-up answer call
-          question: comparisonQuestion.question,
-          options: comparisonQuestion.options,
-          // correctOptionId deliberately NOT sent to the client — it's
-          // checked server-side on the follow-up call, same principle as
-          // never sending annotationText for the hidden piece itself.
-        }
-      : null,
   })
 }

@@ -1,8 +1,8 @@
+import { prisma } from '@/lib/db/prisma'
 import OpenAI from 'openai'
-import { PrismaClient, AiCallType } from '@prisma/client'
+import { AiCallType } from '@prisma/client'
 
 const openai = new OpenAI()
-const prisma = new PrismaClient()
 
 const MODEL = 'gpt-4o-mini'
 const PROMPT_VERSION = 'grade-answer-v1'

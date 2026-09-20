@@ -1,8 +1,8 @@
+import { prisma } from '@/lib/db/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
+import { requireConsent, ConsentError } from '@/lib/compliance/consent-gate'
 
-const prisma = new PrismaClient()
 
 export async function POST(request: NextRequest) {
   const body = await request.json()
@@ -14,9 +14,15 @@ export async function POST(request: NextRequest) {
 
   const studentId = await getCurrentStudentId()
 
-  // Idempotent: if an active session (no endedAt) already exists for this
-  // student+chapter, return it rather than creating a duplicate. This
-  // covers refreshes, double-clicks, and multiple tabs cleanly.
+  try {
+    await requireConsent(studentId)
+  } catch (err) {
+    if (err instanceof ConsentError) {
+      return NextResponse.json({ error: err.message }, { status: 403 })
+    }
+    throw err
+  }
+
   const existing = await prisma.session.findFirst({
     where: {
       studentId,

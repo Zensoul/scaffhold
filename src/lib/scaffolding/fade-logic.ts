@@ -1,6 +1,6 @@
-import { PrismaClient, ProblemAnnotation } from '@prisma/client'
+import { prisma } from '@/lib/db/prisma'
+import { ProblemAnnotation } from '@prisma/client'
 
-const prisma = new PrismaClient()
 
 // --- Step 1: how many pieces to hide, decided by currentLevel ---
 //

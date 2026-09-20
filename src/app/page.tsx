@@ -1,9 +1,8 @@
+import { prisma } from '@/lib/db/prisma'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/auth-config'
-import { PrismaClient } from '@prisma/client'
 import { ContentPage } from '@/components/shared/page-layout'
 
-const prisma = new PrismaClient()
 
 export default async function HomePage() {
   const session = await auth()

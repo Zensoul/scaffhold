@@ -1,6 +1,6 @@
-import { PrismaClient, EndReason } from '@prisma/client'
+import { prisma } from '@/lib/db/prisma'
+import { EndReason } from '@prisma/client'
 
-const prisma = new PrismaClient()
 
 export const SESSION_MAX_DURATION_MS = 15 * 60 * 1000 // 15 minutes
 export const CONSECUTIVE_FAILURE_LIMIT = 2

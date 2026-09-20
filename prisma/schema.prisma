@@ -28,6 +28,7 @@ model User {
   studentProfile    StudentProfile? @relation("StudentUser")
   taughtStudents    StudentProfile[] @relation("TeacherStudents")
   parentChildren    StudentProfile[] @relation("ParentChildren")
+  parentInvites     StudentInvite[] @relation("ParentInvites")
   teacherObservations TeacherObservation[] @relation("TeacherObservations")
   observedStudents  TeacherObservation[] @relation("ObservedStudents")
   reviewedProblems  Problem[]
@@ -109,10 +110,49 @@ model StudentProfile {
   user                 User      @relation("StudentUser", fields: [userId], references: [id])
   teacher              User?     @relation("TeacherStudents", fields: [teacherId], references: [id])
   parent               User?     @relation("ParentChildren", fields: [parentId], references: [id])
+  invite               StudentInvite?
   scaffoldingLevels    ScaffoldingLevel[]
   sessions             Session[]
 
   @@map("student_profiles")
+}
+
+model StudentInvite {
+  id                 String    @id @default(uuid())
+  parentId           String
+  childFullName      String
+  childGrade         Int
+  inviteToken        String    @unique @default(uuid())
+  consentGiven       Boolean   @default(false)
+  consentGivenAt     DateTime?
+  consentTextVersion String?
+  usedAt             DateTime?
+  studentProfileId   String?   @unique
+  createdAt          DateTime  @default(now())
+  expiresAt          DateTime
+
+  parent         User            @relation("ParentInvites", fields: [parentId], references: [id])
+  studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id])
+
+  @@map("student_invites")
+}
+
+model FlaggedContent {
+  id                String    @id @default(uuid())
+  studentId         String
+  sessionId         String?
+  problemId         String?
+  rawText           String
+  moderationResult  Json
+  category          String
+  notifiedParentAt  DateTime?
+  notifiedTeacherAt DateTime?
+  reviewedAt        DateTime?
+  reviewedBy        String?
+  createdAt         DateTime  @default(now())
+
+  @@index([studentId, createdAt])
+  @@map("flagged_content")
 }
 
 enum Board {

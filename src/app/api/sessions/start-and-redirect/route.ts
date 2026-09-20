@@ -1,12 +1,10 @@
+import { prisma } from '@/lib/db/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
+import { requireConsent, ConsentError } from '@/lib/compliance/consent-gate'
+import { selectNextProblem } from '@/lib/scaffolding/adaptive-sequencing'
 
-const prisma = new PrismaClient()
 
-// Same logic as /api/sessions/start, but responds with a redirect
-// instead of JSON — for use directly from an HTML <form> POST (no
-// client-side JS needed on the home page for this simple action).
 export async function POST(request: NextRequest) {
   const formData = await request.formData()
   const chapterId = formData.get('chapterId') as string
@@ -16,6 +14,18 @@ export async function POST(request: NextRequest) {
   }
 
   const studentId = await getCurrentStudentId()
+
+  try {
+    await requireConsent(studentId)
+  } catch (err) {
+    if (err instanceof ConsentError) {
+      // A form POST redirecting to JSON would show the user a raw error
+      // blob — redirect to a real page instead, since this is reachable
+      // directly from a plain HTML button click, not a JS-driven fetch.
+      return NextResponse.redirect(new URL('/consent-required', request.url))
+    }
+    throw err
+  }
 
   const existing = await prisma.session.findFirst({
     where: { studentId, chapterId, endedAt: null },
@@ -46,20 +56,14 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // Pick the first active problem in this chapter — a real "which
-  // problem next" decision (adaptive sequencing) doesn't exist yet;
-  // this is an honest placeholder, not a hidden feature.
-  const firstProblem = await prisma.problem.findFirst({
-    where: { chapterId, isActive: true },
-    orderBy: { createdAt: 'asc' },
-  })
+  const nextProblem = await selectNextProblem({ studentId, chapterId })
 
-  if (!firstProblem) {
+  if (!nextProblem) {
     return NextResponse.json({ error: 'No active problems in this chapter' }, { status: 422 })
   }
 
   const redirectUrl = new URL(
-    `/problems/${firstProblem.id}/start?sessionId=${session.id}`,
+    `/problems/${nextProblem.problemId}/start?sessionId=${session.id}`,
     request.url
   )
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { ContentPage } from '@/components/shared/page-layout'
 
 type VisibleAnnotation = {
@@ -59,6 +59,7 @@ type Mode2Response =
       sessionEnded: false
       problemComplete: true
       problem: { id: string; rawText: string; concreteRestatement: string }
+      chapterId: string
       annotations: FullAnnotation[]
     }
   | {
@@ -77,6 +78,7 @@ const TYPE_LABEL: Record<string, string> = {
 export default function Mode2Page() {
   const { id } = useParams<{ id: string }>()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const sessionId = searchParams.get('sessionId')
 
   const [data, setData] = useState<Mode2Response | null>(null)
@@ -134,6 +136,14 @@ export default function Mode2Page() {
       }),
     })
 
+    if (!res.ok) {
+      // Most commonly: the session expired between page load and submit
+      // (a real timing gap, not a bug) — reload rather than render
+      // garbage from an error response shape the UI doesn't expect.
+      loadProblem()
+      return
+    }
+
     const json = await res.json()
     setResult(json)
   }
@@ -153,6 +163,21 @@ export default function Mode2Page() {
 
     const json = await res.json()
     setComparisonAnswered({ selectedId: selectedOptionId, isCorrect: json.isCorrect })
+  }
+
+  async function handleContinueToNextProblem(chapterId: string) {
+    if (!sessionId) return
+
+    const res = await fetch(`/api/problems/next?chapterId=${chapterId}&sessionId=${sessionId}`)
+    const json = await res.json()
+
+    if (json.nextUrl) {
+      router.push(json.nextUrl)
+    } else {
+      // Honest fallback: if sequencing somehow fails, don't strand the
+      // student on a dead screen — just refresh the current problem.
+      loadProblem()
+    }
   }
 
   if (loading) return <ContentPage maxWidth={640}>Loading...</ContentPage>
@@ -209,7 +234,7 @@ export default function Mode2Page() {
         </ol>
 
         <button
-          onClick={loadProblem}
+          onClick={() => handleContinueToNextProblem(data.chapterId)}
           style={{
             marginTop: '1rem',
             padding: '0.5rem 1rem',

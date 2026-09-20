@@ -1,9 +1,9 @@
+import { prisma } from '@/lib/db/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient, EndReason } from '@prisma/client'
+import { EndReason } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 import { generateSessionEndStatement } from '@/lib/ai/session-end-statement'
 
-const prisma = new PrismaClient()
 
 export async function POST(
   request: NextRequest,

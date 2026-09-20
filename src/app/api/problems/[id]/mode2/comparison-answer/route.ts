@@ -1,8 +1,8 @@
+import { prisma } from '@/lib/db/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient, InteractionType, ScaffoldingReason, Prisma } from '@prisma/client'
+import { InteractionType, ScaffoldingReason, Prisma } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 
-const prisma = new PrismaClient()
 
 const LEVEL_DELTA_COMPARISON_CORRECT = 0.02
 

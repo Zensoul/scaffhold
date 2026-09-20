@@ -1,12 +1,11 @@
+import { prisma } from '@/lib/db/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 import { rephraseHint } from '@/lib/ai/rephrase-hint'
 import { checkSessionGuard } from '@/lib/session/session-guard'
 import { generateSessionEndStatement } from '@/lib/ai/session-end-statement'
 import { getFadeStepForStudent } from '@/lib/scaffolding/fade-logic'
-
-const prisma = new PrismaClient()
+import { requireConsent, ConsentError } from '@/lib/compliance/consent-gate'
 
 const FADEABLE_TYPES = ['given', 'implied_given', 'unknown'] as const
 
@@ -23,10 +22,30 @@ export async function GET(
 
   const studentId = await getCurrentStudentId()
 
-  const problem = await prisma.problem.findUnique({
+  // requireConsent and problem.findUnique don't depend on each other's
+  // results, so running them concurrently saves one full round-trip of
+  // latency versus awaiting them one after another. KNOWN LIMITATION:
+  // each remaining query still pays significant per-round-trip latency
+  // (~1.5s observed) due to database region distance (Supabase project
+  // is in ap-southeast-2/Sydney) — this is a genuine infrastructure
+  // issue, not something code-level parallelization fully solves.
+  // Deliberately deferred: migrating regions is the real fix, tracked
+  // as a known follow-up rather than addressed tonight.
+  const consentPromise = requireConsent(studentId)
+  const problemPromise = prisma.problem.findUnique({
     where: { id },
     include: { annotations: { orderBy: { sequenceOrder: 'asc' } } },
   })
+
+  let problem: Awaited<typeof problemPromise>
+  try {
+    ;[, problem] = await Promise.all([consentPromise, problemPromise])
+  } catch (err) {
+    if (err instanceof ConsentError) {
+      return NextResponse.json({ error: err.message }, { status: 403 })
+    }
+    throw err
+  }
 
   if (!problem || !problem.isActive) {
     return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
@@ -79,18 +98,12 @@ export async function GET(
     return NextResponse.json({ error: 'Problem has no fadeable annotations' }, { status: 422 })
   }
 
-  // Progressive fade: how many pieces to hide is decided by currentLevel;
-  // which pieces (today: fixed easiest-first order — see fade-logic.ts
-  // for why personalized selection isn't safe to build yet).
   const { hidden: hiddenSet, hideCount, currentLevel } = await getFadeStepForStudent(
     studentId,
     problem.chapterId,
     fadeable
   )
 
-  // Of this attempt's hidden set, find the first one NOT yet answered
-  // correctly in this session. The student answers one piece at a time,
-  // in sequence — same interaction shape regardless of hideCount.
   const answeredCorrectlyIds = new Set(
     (
       await prisma.sessionInteraction.findMany({
@@ -108,7 +121,6 @@ export async function GET(
   const nextToAnswer = hiddenSet.find((a) => !answeredCorrectlyIds.has(a.id))
 
   if (!nextToAnswer) {
-    // All hidden pieces for this attempt are answered — problem complete.
     await prisma.session.update({
       where: { id: sessionId },
       data: { problemsPresented: { increment: 1 } },
@@ -122,7 +134,8 @@ export async function GET(
         rawText: problem.rawText,
         concreteRestatement: problem.concreteRestatement,
       },
-      annotations: problem.annotations, // full reveal
+      chapterId: problem.chapterId,
+      annotations: problem.annotations,
     })
   }
 
@@ -173,7 +186,6 @@ export async function GET(
       hintText,
       hintWasRephrased,
     },
-    // Informational — lets the UI show "piece 2 of 3" style progress if desired.
     fadeProgress: {
       totalHidden: hiddenSet.length,
       answeredSoFar: answeredCorrectlyIds.size,

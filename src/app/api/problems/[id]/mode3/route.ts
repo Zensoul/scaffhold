@@ -1,10 +1,10 @@
+import { prisma } from '@/lib/db/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 import { checkSessionGuard } from '@/lib/session/session-guard'
 import { generateSessionEndStatement } from '@/lib/ai/session-end-statement'
+import { requireConsent, ConsentError } from '@/lib/compliance/consent-gate'
 
-const prisma = new PrismaClient()
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +18,15 @@ export async function GET(
   }
 
   const studentId = await getCurrentStudentId()
+
+  try {
+    await requireConsent(studentId)
+  } catch (err) {
+    if (err instanceof ConsentError) {
+      return NextResponse.json({ error: err.message }, { status: 403 })
+    }
+    throw err
+  }
 
   const problem = await prisma.problem.findUnique({ where: { id } })
   if (!problem || !problem.isActive) {

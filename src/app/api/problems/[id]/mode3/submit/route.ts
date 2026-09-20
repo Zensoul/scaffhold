@@ -1,16 +1,11 @@
+import { prisma } from '@/lib/db/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient, InteractionType, ScaffoldingReason } from '@prisma/client'
+import { InteractionType, ScaffoldingReason } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 import { gradeOpenTextAnswer } from '@/lib/ai/grade-open-text'
+import { moderateStudentText, recordNotificationOwed } from '@/lib/safety/content-moderation'
 
-const prisma = new PrismaClient()
 
-// Larger deltas than Mode 2 — succeeding here, unaided, is the actual
-// 90-day goal, so it should move the needle more than a scaffolded
-// fill-in-the-blank success. A miss here is also more informative (it
-// means the fade hasn't actually transferred to independent ability
-// yet), so it costs a bit more too — this is a placeholder pairing,
-// same category as every other delta constant, pending real data.
 const LEVEL_DELTA_CORRECT = 0.08
 const LEVEL_DELTA_INCORRECT = -0.03
 
@@ -46,9 +41,27 @@ export async function POST(
     return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
   }
 
-  // Reference content for grading: unknownAnnotation for restate_unknown,
-  // a joined summary of givens (from the derived-cache JSON field) for
-  // list_givens — using the same cache field Mode 1 reads for display.
+  const moderation = await moderateStudentText({
+    studentId,
+    sessionId,
+    problemId,
+    text: studentResponse,
+  })
+
+  if (moderation.flagged) {
+    await recordNotificationOwed(moderation.flaggedContentId)
+
+    return NextResponse.json({
+      correct: false,
+      feedback:
+        "Thanks for sharing that. This seems like something worth talking through with a " +
+        "parent, teacher, or someone you trust — not something to work out here. " +
+        "If you ever need to talk to someone right away, you can reach Tele-MANAS at " +
+        "14416 or 1-800-891-4416 (India), free and available 24/7 in 20 languages.",
+      moderationFlagged: true,
+    })
+  }
+
   const referenceContent =
     promptType === 'restate_unknown'
       ? problem.unknownAnnotation
@@ -87,7 +100,7 @@ export async function POST(
         interactionType: correct
           ? InteractionType.annotation_correct
           : InteractionType.annotation_incorrect,
-        annotationId: null, // Mode 3 has no specific annotation being answered
+        annotationId: null,
         mode3PromptType: promptType,
         studentResponse,
         isCorrect: correct,

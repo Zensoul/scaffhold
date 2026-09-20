@@ -1,8 +1,8 @@
+import { prisma } from '@/lib/db/prisma'
 import OpenAI from 'openai'
-import { PrismaClient, AiCallType } from '@prisma/client'
+import { AiCallType } from '@prisma/client'
 
 const openai = new OpenAI() // reads OPENAI_API_KEY from env
-const prisma = new PrismaClient()
 
 const MODEL = 'gpt-4o-mini'
 const PROMPT_VERSION = 'hint-rephrase-v1'

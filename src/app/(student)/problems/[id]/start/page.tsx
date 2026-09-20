@@ -1,8 +1,7 @@
+import { prisma } from '@/lib/db/prisma'
 import { redirect, notFound } from 'next/navigation'
-import { PrismaClient } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 
-const prisma = new PrismaClient()
 
 const MODE_3_THRESHOLD = 0.8
 
