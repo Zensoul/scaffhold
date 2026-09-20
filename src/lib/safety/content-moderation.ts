@@ -1,5 +1,6 @@
-import { prisma } from '@/lib/db/prisma'
 import OpenAI from 'openai'
+import { prisma } from '@/lib/db/prisma'
+import { sendFlaggedContentNotification } from '@/lib/notifications/email-notifications'
 
 const openai = new OpenAI()
 
@@ -76,23 +77,35 @@ export async function moderateStudentText(params: {
   }
 }
 
-// Placeholder for actual notification delivery — no email/SMS channel
-// exists yet (that's a separate, larger piece of infrastructure). For
-// now this records that a notification WOULD have been sent, which
-// still gives you a real, queryable audit trail of every moment a
-// parent/teacher should have been contacted, even before delivery
-// itself is built.
+// Sends a real email notification to the linked parent when content is
+// flagged. Replaces the earlier placeholder that only recorded a
+// timestamp — this genuinely delivers something to a real person now.
 export async function recordNotificationOwed(flaggedContentId: string): Promise<void> {
-  await prisma.flaggedContent.update({
+  const flagged = await prisma.flaggedContent.findUnique({
     where: { id: flaggedContentId },
-    data: {
-      notifiedParentAt: new Date(),
-      notifiedTeacherAt: new Date(),
-    },
   })
 
-  // TODO: real delivery once an email/SMS provider is wired up.
-  console.warn(
-    `[NOTIFICATION OWED] Flagged content ${flaggedContentId} requires parent/teacher notification — no delivery channel configured yet.`
-  )
+  if (!flagged) {
+    console.error(`Cannot send notification — FlaggedContent ${flaggedContentId} not found`)
+    return
+  }
+
+  const result = await sendFlaggedContentNotification({
+    flaggedContentId,
+    studentId: flagged.studentId,
+  })
+
+  if (!result.sent) {
+    // Do not silently swallow a failed safety notification — this is
+    // exactly the failure mode the whole feature exists to prevent.
+    console.error(
+      `[NOTIFICATION FAILED] Flagged content ${flaggedContentId}: ${result.error}. ` +
+      `A human should manually check this student's flagged content.`
+    )
+  }
+
+  // TODO: teacher notification is a separate, not-yet-built path —
+  // requires knowing which teacher is assigned to this student, which
+  // the current StudentProfile.teacherId field supports but no
+  // notification logic has been built for yet.
 }

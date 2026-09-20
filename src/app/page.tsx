@@ -1,8 +1,9 @@
-import { prisma } from '@/lib/db/prisma'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/auth-config'
+import { PrismaClient } from '@prisma/client'
 import { ContentPage } from '@/components/shared/page-layout'
 
+const prisma = new PrismaClient()
 
 export default async function HomePage() {
   const session = await auth()
@@ -12,11 +13,13 @@ export default async function HomePage() {
   }
 
   if (session.user.role !== 'student') {
+    if (session.user.role === 'parent') {
+      redirect('/dashboard')
+    }
     return (
       <ContentPage maxWidth={480}>
         <p style={{ color: '#111', fontSize: '1.05rem', textAlign: 'center' }}>
-          {session.user.role === 'parent' ? 'Parent' : 'Teacher'} dashboards aren't available yet —
-          check back soon.
+          Teacher dashboards aren't available yet — check back soon.
         </p>
       </ContentPage>
     )

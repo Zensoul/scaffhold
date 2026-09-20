@@ -155,6 +155,17 @@ model FlaggedContent {
   @@map("flagged_content")
 }
 
+model RevokedSession {
+  id        String   @id @default(uuid())
+  jti       String   @unique
+  userId    String
+  revokedAt DateTime @default(now())
+  reason    String?
+
+  @@index([jti])
+  @@map("revoked_sessions")
+}
+
 enum Board {
   CBSE
   ICSE

@@ -1,9 +1,15 @@
-import { auth } from '@/lib/auth/auth-config'
+import NextAuth from 'next-auth'
 import { NextResponse } from 'next/server'
+import { authConfigEdge } from '@/lib/auth/auth-config-edge'
 
-// Protects everything under /problems and the home page itself.
-// /login, /register, and all /api/auth/* routes are deliberately left
-// out of this matcher — those must stay reachable by definition.
+// Uses the EDGE-SAFE config only — never the full auth-config.ts, which
+// imports Prisma and cannot run in the Edge Runtime that middleware
+// executes in by default. This is the standard Auth.js split pattern:
+// middleware gets a lightweight "is there a session" check; the actual
+// revocation-denylist check happens in the full config's jwt callback,
+// which runs on the Node runtime for every real page/API request.
+const { auth } = NextAuth(authConfigEdge)
+
 export default auth((req) => {
   const isLoggedIn = !!req.auth
   const { pathname } = req.nextUrl

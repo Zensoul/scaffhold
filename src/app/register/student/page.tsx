@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { CenteredPage, sharedStyles } from '@/components/shared/page-layout'
 
-export default function StudentRegisterPage() {
+function StudentRegisterForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token')
@@ -161,5 +161,17 @@ export default function StudentRegisterPage() {
         </button>
       </form>
     </CenteredPage>
+  )
+}
+
+// The actual page export — wraps the form (which uses useSearchParams)
+// in a Suspense boundary. Required for Next.js static prerendering to
+// succeed; without this, the production build fails outright (as it
+// did tonight) even though dev mode never surfaces the problem.
+export default function StudentRegisterPage() {
+  return (
+    <Suspense fallback={<CenteredPage>Loading...</CenteredPage>}>
+      <StudentRegisterForm />
+    </Suspense>
   )
 }

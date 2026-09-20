@@ -1,28 +1,29 @@
-import { prisma } from '@/lib/db/prisma'
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
+import { prisma } from '@/lib/db/prisma'
 import bcrypt from 'bcryptjs'
+import { isSessionRevoked } from '@/lib/auth/session-revocation'
+import { authConfigEdge } from '@/lib/auth/auth-config-edge'
 
+// This file is the FULL config — Node runtime only (API routes, server
+// components, route handlers). It must never be imported by
+// middleware.ts directly; middleware uses authConfigEdge instead. This
+// file extends that Edge-safe base with everything that needs real
+// Node APIs: Prisma (database), bcrypt (password hashing), and the
+// actual provider/callback logic.
+//
+// Uses the global Web Crypto API (crypto.randomUUID(), available as a
+// global in both Node and Edge runtimes) instead of importing Node's
+// `crypto` module — that import was what originally broke the Edge
+// build, even before Prisma calls were added.
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  ...authConfigEdge,
+
   adapter: PrismaAdapter(prisma) as any,
 
-  // JWT strategy, not database. This is a deliberate correction: NextAuth
-  // v5's Credentials provider does not create database session rows —
-  // this is a documented, unresolved limitation in the library itself
-  // (see nextauthjs/next-auth issues #12848, #12858, #9636), not a bug
-  // in our adapter override. The Prisma adapter is still used for
-  // account linking (Google OAuth) and user storage; only the SESSION
-  // itself is now a signed JWT in an httpOnly cookie rather than a
-  // database row.
-  //
-  // Trade-off accepted: we lose instant server-side session revocation
-  // (a JWT is valid until it expires, even if we "delete" a session
-  // server-side) — this matters for the DPDP-consciousness the original
-  // architecture doc called for, and is a real gap to revisit later
-  // (e.g. a token-blocklist) rather than something quietly solved here.
   session: {
     strategy: 'jwt',
   },
@@ -65,22 +66,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
 
   callbacks: {
-    // With JWT strategy, role/studentProfileId must be attached in the
-    // jwt callback (which runs on sign-in and token refresh), then
-    // copied onto the session in the session callback — this two-step
-    // is required because the session callback with JWT strategy
-    // receives the TOKEN, not a fresh DB lookup by user id the way
-    // database strategy provided.
+    ...authConfigEdge.callbacks,
+
     async jwt({ token, user }) {
       if (user) {
-        // Runs only at sign-in, when `user` is populated.
+        token.jti = crypto.randomUUID()
+
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
           include: { studentProfile: true },
         })
         token.role = dbUser?.role
         token.studentProfileId = dbUser?.studentProfile?.id ?? null
+        return token
       }
+
+      if (token.jti && (await isSessionRevoked(token.jti as string))) {
+        return null
+      }
+
       return token
     },
     async session({ session, token }) {
@@ -88,12 +92,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.sub as string
         session.user.role = token.role as 'student' | 'parent' | 'teacher' | undefined
         session.user.studentProfileId = token.studentProfileId as string | null
+        session.user.jti = token.jti as string
       }
       return session
     },
-  },
-
-  pages: {
-    signIn: '/login',
   },
 })
