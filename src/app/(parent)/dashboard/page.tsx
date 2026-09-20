@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth/auth-config'
 import { prisma } from '@/lib/db/prisma'
 import { ContentPage } from '@/components/shared/page-layout'
+import { DataControls } from '@/components/parent/data-controls'
 
 export default async function ParentDashboardPage() {
   const session = await auth()
@@ -84,6 +85,8 @@ export default async function ParentDashboardPage() {
               </p>
             </div>
           ))}
+
+          <DataControls studentProfileId={child.id} childName={child.user.fullName} />
         </div>
       ))}
 
