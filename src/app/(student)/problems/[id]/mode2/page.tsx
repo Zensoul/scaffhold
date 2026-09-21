@@ -37,6 +37,7 @@ type ComparisonQuestion = {
 type SubmitResult = {
   correct: boolean
   correctAnswer?: string
+  isFirstMiss?: boolean
   comparisonQuestion: ComparisonQuestion | null
 }
 
@@ -146,6 +147,13 @@ export default function Mode2Page() {
 
     const json = await res.json()
     setResult(json)
+
+    // On a first miss, clear the input so the retry feels like a fresh
+    // attempt — the "not quite, try again" message renders above the
+    // now-empty input, per the isFirstMiss branch in the form below.
+    if (json.isFirstMiss) {
+      setAnswer('')
+    }
   }
 
   async function handleComparisonSelect(selectedOptionId: string) {
@@ -311,8 +319,13 @@ export default function Mode2Page() {
               {TYPE_LABEL[data.hiddenAnnotation.annotationType]}
             </p>
 
-            {!result && (
+            {(!result || result.isFirstMiss) && (
               <form onSubmit={handleSubmit}>
+                {result?.isFirstMiss && (
+                  <p style={{ color: '#b45309', fontWeight: 600, marginBottom: '0.5rem' }}>
+                    Not quite — look again and try once more in your own words.
+                  </p>
+                )}
                 <input
                   type="text"
                   value={answer}

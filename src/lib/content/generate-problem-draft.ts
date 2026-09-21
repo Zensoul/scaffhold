@@ -20,11 +20,22 @@ export async function generateProblemDraft(params: {
 }): Promise<{ draftId: string }> {
   const { chapterId, rawText } = params
 
+  const chapter = await prisma.chapter.findUnique({ where: { id: chapterId } })
+
   const examples = await prisma.problem.findMany({
     where: { chapterId, isActive: true },
     include: { annotations: { orderBy: { sequenceOrder: 'asc' } } },
     take: 3,
   })
+
+  const deletedSubtopics = (chapter?.deletedSubtopics as string[] | null) ?? []
+  const deletedTopicsWarning =
+    deletedSubtopics.length > 0
+      ? `\n\nIMPORTANT: The following subtopics have been REMOVED from the current CBSE syllabus ` +
+        `(${chapter?.syllabusYear ?? 'current year'}) and must NEVER appear in this draft, even as a ` +
+        `passing reference or an implied concept: ${deletedSubtopics.join(', ')}. If the input problem ` +
+        `text relies on any of these, note this clearly rather than drafting a normal annotation set.`
+      : ''
 
   const exampleText = examples
     .map(
@@ -68,8 +79,12 @@ ${p.annotations
             '"problemType": string (a short snake_case category), "difficultyTier": number (1-3), ' +
             '"annotations": [{"annotationType": "given"|"implied_given"|"unknown"|"concept_anchor", ' +
             '"annotationText": string, "hintText": string, "sequenceOrder": number}]}. ' +
-            'Order annotations easiest-to-hardest: explicit givens first, then implied givens, ' +
-            'then the unknown, then concept_anchor last.',
+            'CRITICAL: every single object in the annotations array, WITHOUT EXCEPTION — including the ' +
+            'final concept_anchor entry — must include a numeric sequenceOrder field. Never omit it on ' +
+            'any annotation, even the last one. Order annotations easiest-to-hardest: explicit givens ' +
+            'first (sequenceOrder 1, 2, 3...), then implied givens, then the unknown, then concept_anchor ' +
+            'last, with sequenceOrder continuing to increment for every entry.' +
+            deletedTopicsWarning,
         },
         {
           role: 'user',
@@ -87,6 +102,20 @@ ${p.annotations
 
     if (responseText) {
       parsed = JSON.parse(responseText)
+
+      // Defensive check, not just a prompt instruction: if the LLM
+      // omits sequenceOrder on any annotation (as it did during initial
+      // testing tonight, on the last entry), fill it in based on array
+      // position rather than silently letting a malformed draft through.
+      // This still requires human review before publication — it just
+      // means the reviewer sees a structurally complete draft, not one
+      // missing a field that would break fade ordering downstream.
+      if (Array.isArray(parsed?.annotations)) {
+        parsed.annotations = parsed.annotations.map((a: any, index: number) => ({
+          ...a,
+          sequenceOrder: typeof a.sequenceOrder === 'number' ? a.sequenceOrder : index + 1,
+        }))
+      }
     }
   } catch (err) {
     console.error('generateProblemDraft LLM call failed:', err)

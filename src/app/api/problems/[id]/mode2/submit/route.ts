@@ -1,13 +1,12 @@
-import { prisma } from '@/lib/db/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 import { InteractionType, ScaffoldingReason } from '@prisma/client'
+import { prisma } from '@/lib/db/prisma'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
-import { gradeOpenTextAnswer } from '@/lib/ai/grade-open-text'
-import { moderateStudentText, recordNotificationOwed } from '@/lib/safety/content-moderation'
+import { gradeAnswer } from '@/lib/ai/grade-answer'
+import { generateComparisonQuestion } from '@/lib/ai/comparison-question'
 
-
-const LEVEL_DELTA_CORRECT = 0.08
-const LEVEL_DELTA_INCORRECT = -0.03
+const LEVEL_DELTA_CORRECT = 0.05
+const LEVEL_DELTA_INCORRECT = -0.02
 
 export async function POST(
   request: NextRequest,
@@ -15,16 +14,16 @@ export async function POST(
 ) {
   const { id: problemId } = await params
   const body = await request.json()
-  const { promptType, studentResponse, sessionId, timeOnStepMs } = body as {
-    promptType: 'restate_unknown' | 'list_givens'
+  const { annotationId, studentResponse, sessionId, timeOnStepMs } = body as {
+    annotationId: string
     studentResponse: string
     sessionId: string
     timeOnStepMs?: number
   }
 
-  if (!promptType || typeof studentResponse !== 'string' || !sessionId) {
+  if (!annotationId || typeof studentResponse !== 'string' || !sessionId) {
     return NextResponse.json(
-      { error: 'promptType, studentResponse, and sessionId are required' },
+      { error: 'annotationId, studentResponse, and sessionId are required' },
       { status: 400 }
     )
   }
@@ -36,54 +35,38 @@ export async function POST(
     return NextResponse.json({ error: 'Session is not active — start a new one' }, { status: 409 })
   }
 
+  const annotation = await prisma.problemAnnotation.findUnique({ where: { id: annotationId } })
+  if (!annotation || annotation.problemId !== problemId) {
+    return NextResponse.json({ error: 'Annotation not found for this problem' }, { status: 404 })
+  }
+
   const problem = await prisma.problem.findUnique({ where: { id: problemId } })
   if (!problem) {
     return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
   }
 
-  // Moderation runs BEFORE grading, always, on every piece of free text
-  // this route ever receives — this is the actual safeguard, and it
-  // must never be skippable or bypassable by any grading-path logic.
-  const moderation = await moderateStudentText({
-    studentId,
-    sessionId,
-    problemId,
-    text: studentResponse,
+  // Count PRIOR misses on this exact annotation, BEFORE this submission
+  // is recorded. Reused from the same signal Mode 2's GET route already
+  // uses for hint rephrasing — here it decides whether a wrong answer
+  // triggers the comparison question or a genuine "try again" state.
+  //
+  // Research basis (learned-helplessness / productive-struggle
+  // literature): a self-generated correct answer carries a stronger
+  // "I figured this out" signal than a correctly-recognized multiple-
+  // choice option. Give one bounded, nudge-supported retry in the
+  // student's own words first, and only escalate to the structured
+  // comparison-question recovery after a SECOND miss on the same piece.
+  const priorMissesBeforeThisAttempt = await prisma.sessionInteraction.count({
+    where: { studentId, annotationId: annotation.id, isCorrect: false },
   })
 
-  if (moderation.flagged) {
-    await recordNotificationOwed(moderation.flaggedContentId)
-
-    // Deliberately do NOT grade this submission, do NOT reveal the
-    // flagged category to the student, and do NOT frame this as a
-    // wrong answer. A warm, non-judgmental response — this is not a
-    // moment for "incorrect."
-    return NextResponse.json({
-      correct: false,
-      feedback:
-        "Thanks for sharing that. This seems like something worth talking through with a " +
-        "parent, teacher, or someone you trust — not something to work out here. " +
-        "If you ever need to talk to someone right away, you can reach Tele-MANAS at " +
-        "14416 or 1-800-891-4416 (India), free and available 24/7 in 20 languages.",
-      moderationFlagged: true,
-    })
-  }
-
-  // Reference content for grading: unknownAnnotation for restate_unknown,
-  // a joined summary of givens (from the derived-cache JSON field) for
-  // list_givens — using the same cache field Mode 1 reads for display.
-  const referenceContent =
-    promptType === 'restate_unknown'
-      ? problem.unknownAnnotation
-      : JSON.stringify(problem.givens)
-
-  const { isCorrect: correct, feedback } = await gradeOpenTextAnswer({
+  const { isCorrect: correct, usedLLM } = await gradeAnswer({
     studentId,
     sessionId,
     problemId,
-    promptType,
+    annotationId: annotation.id,
     studentResponse,
-    referenceContent,
+    correctText: annotation.annotationText,
   })
 
   const scaffoldingLevel = await prisma.scaffoldingLevel.findUnique({
@@ -92,7 +75,7 @@ export async function POST(
 
   if (!scaffoldingLevel) {
     return NextResponse.json(
-      { error: 'No scaffolding level record for this student/chapter' },
+      { error: 'No scaffolding level record for this student/chapter — seed one first' },
       { status: 422 }
     )
   }
@@ -100,6 +83,22 @@ export async function POST(
   const levelBefore = scaffoldingLevel.currentLevel
   const delta = correct ? LEVEL_DELTA_CORRECT : LEVEL_DELTA_INCORRECT
   const levelAfter = Math.max(0, Math.min(1, Number(levelBefore) + delta))
+
+  // Only generate the comparison question once the student has ALREADY
+  // missed this piece before. A first-ever miss gets NO comparison
+  // question — just the correctness result, so the UI shows a genuine
+  // "try again in your own words" state instead.
+  const isSecondOrLaterMiss = !correct && priorMissesBeforeThisAttempt >= 1
+
+  const comparisonQuestion = isSecondOrLaterMiss
+    ? await generateComparisonQuestion({
+        studentId,
+        sessionId,
+        problemId,
+        correctText: annotation.annotationText,
+        studentWrongAnswer: studentResponse,
+      })
+    : null
 
   const [interaction] = await prisma.$transaction([
     prisma.sessionInteraction.create({
@@ -110,12 +109,12 @@ export async function POST(
         interactionType: correct
           ? InteractionType.annotation_correct
           : InteractionType.annotation_incorrect,
-        annotationId: null, // Mode 3 has no specific annotation being answered
-        mode3PromptType: promptType,
+        annotationId: annotation.id,
         studentResponse,
         isCorrect: correct,
         scaffoldingLevelAt: levelAfter,
         timeOnStepMs,
+        comparisonData: comparisonQuestion ? JSON.parse(JSON.stringify(comparisonQuestion)) : undefined,
       },
     }),
     prisma.scaffoldingLevel.update({
@@ -149,9 +148,22 @@ export async function POST(
 
   return NextResponse.json({
     correct,
-    feedback,
+    // Withhold the correct answer entirely on a first miss — the
+    // student should be retrying in their own words, not seeing it.
+    // Only revealed on a second-or-later miss (never needed when
+    // correct, since there's nothing to reveal).
+    correctAnswer: isSecondOrLaterMiss ? annotation.annotationText : undefined,
+    isFirstMiss: !correct && !isSecondOrLaterMiss,
     levelBefore,
     levelAfter,
     interactionId: interaction.id,
+    gradedByLLM: usedLLM,
+    comparisonQuestion: comparisonQuestion
+      ? {
+          interactionId: interaction.id,
+          question: comparisonQuestion.question,
+          options: comparisonQuestion.options,
+        }
+      : null,
   })
 }

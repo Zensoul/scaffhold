@@ -189,11 +189,13 @@ enum SubjectName {
 }
 
 model Chapter {
-  id               String    @id @default(uuid())
-  subjectId        String
-  name             String
-  sequenceNumber   Int
-  isActive         Boolean   @default(true)
+  id                 String    @id @default(uuid())
+  subjectId          String
+  name               String
+  sequenceNumber     Int
+  isActive           Boolean   @default(true)
+  syllabusYear       String?
+  deletedSubtopics   Json      @default("[]")
 
   subject          Subject   @relation(fields: [subjectId], references: [id])
   problems         Problem[]
