@@ -5,7 +5,7 @@ import { AiCallType } from '@prisma/client'
 const openai = new OpenAI()
 
 const MODEL = 'gpt-4o-mini'
-const PROMPT_VERSION = 'comparison-question-v1'
+const PROMPT_VERSION = 'comparison-question-v2'
 
 export type ComparisonQuestion = {
   question: string
@@ -62,9 +62,13 @@ export async function generateComparisonQuestion(params: {
             'You write a short "what is different between these two?" multiple-choice question for a struggling ' +
             '10th-grade math/physics student who just got a piece of a problem wrong. Do not reveal the correct ' +
             'answer directly in the question text — the question should prompt them to notice the difference ' +
-            'themselves. Provide exactly 3 options: one that correctly names the real difference, and two ' +
-            'plausible-but-wrong distractors. Keep the question and each option to one short sentence. ' +
-            'Respond ONLY with JSON in this exact shape: ' +
+            'themselves. Frame the question as two different READINGS of the problem, not as a right way versus ' +
+            'a wrong way of thinking — e.g. prefer "these two describe the problem differently" over language ' +
+            'that could imply the student misunderstood or is missing something. Never use wording that suggests ' +
+            'the student lacks the ability to see this — the miss is about which detail was noticed this time, ' +
+            'not a gap in what they are capable of. Provide exactly 3 options: one that correctly names the real ' +
+            'difference, and two plausible-but-wrong distractors. Keep the question and each option to one short ' +
+            'sentence. Respond ONLY with JSON in this exact shape: ' +
             '{"question": string, "options": [{"id": "a", "text": string}, {"id": "b", "text": string}, ' +
             '{"id": "c", "text": string}], "correctOptionId": "a" | "b" | "c"}.',
         },

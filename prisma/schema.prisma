@@ -22,19 +22,20 @@ model User {
   createdAt         DateTime  @default(now())
   lastLoginAt       DateTime?
 
-  accounts          Account[]
-  authSessions      Session_NextAuth[]
+  accounts     Account[]
+  authSessions Session_NextAuth[]
 
-  studentProfile    StudentProfile? @relation("StudentUser")
-  taughtStudents    StudentProfile[] @relation("TeacherStudents")
-  parentChildren    StudentProfile[] @relation("ParentChildren")
-  parentInvites     StudentInvite[] @relation("ParentInvites")
-  teacherObservations TeacherObservation[] @relation("TeacherObservations")
-  observedStudents  TeacherObservation[] @relation("ObservedStudents")
-  reviewedProblems  Problem[]
-  reviewedDrafts    ProblemDraft[]
-  parentSummaries   ParentSummary[] @relation("ParentSummaries")
-  studentSummaries  ParentSummary[] @relation("StudentParentSummaries")
+  studentProfile         StudentProfile?      @relation("StudentUser")
+  taughtStudents         StudentProfile[]     @relation("TeacherStudents")
+  parentChildren         StudentProfile[]     @relation("ParentChildren")
+  parentInvites          StudentInvite[]      @relation("ParentInvites")
+  teacherObservations    TeacherObservation[] @relation("TeacherObservations")
+  observedStudents       TeacherObservation[] @relation("ObservedStudents")
+  reviewedProblems       Problem[]
+  reviewedDrafts         ProblemDraft[]
+  parentSummaries        ParentSummary[]      @relation("ParentSummaries")
+  studentSummaries       ParentSummary[]      @relation("StudentParentSummaries")
+  chapterAssignmentsMade ChapterAssignment[]  @relation("ChapterAssigner")
 
   @@map("users")
 }
@@ -95,25 +96,26 @@ enum Language {
 }
 
 model StudentProfile {
-  id                   String    @id @default(uuid())
-  userId               String    @unique
-  grade                Int
-  board                Board     @default(CBSE)
-  schoolName           String?
-  teacherId            String?
-  parentId             String?
-  enrollmentDate       DateTime  @default(now())
-  dpdpConsentGiven     Boolean   @default(false)
-  dpdpConsentAt        DateTime?
-  dpdpConsentVersion   String?
-  isActive             Boolean   @default(true)
+  id                 String    @id @default(uuid())
+  userId             String    @unique
+  grade              Int
+  board              Board     @default(CBSE)
+  schoolName         String?
+  teacherId          String?
+  parentId           String?
+  enrollmentDate     DateTime  @default(now())
+  dpdpConsentGiven   Boolean   @default(false)
+  dpdpConsentAt      DateTime?
+  dpdpConsentVersion String?
+  isActive           Boolean   @default(true)
 
-  user                 User      @relation("StudentUser", fields: [userId], references: [id])
-  teacher              User?     @relation("TeacherStudents", fields: [teacherId], references: [id])
-  parent               User?     @relation("ParentChildren", fields: [parentId], references: [id])
-  invite               StudentInvite?
-  scaffoldingLevels    ScaffoldingLevel[]
-  sessions             Session[]
+  user               User                @relation("StudentUser", fields: [userId], references: [id])
+  teacher            User?               @relation("TeacherStudents", fields: [teacherId], references: [id])
+  parent             User?               @relation("ParentChildren", fields: [parentId], references: [id])
+  chapterAssignments ChapterAssignment[]
+  invite             StudentInvite?
+  scaffoldingLevels  ScaffoldingLevel[]
+  sessions           Session[]
 
   @@map("student_profiles")
 }
@@ -173,10 +175,10 @@ enum Board {
 }
 
 model Subject {
-  id       String    @id @default(uuid())
+  id       String      @id @default(uuid())
   name     SubjectName
   grade    Int
-  board    Board     @default(CBSE)
+  board    Board       @default(CBSE)
   chapters Chapter[]
 
   @@unique([name, grade, board])
@@ -189,49 +191,65 @@ enum SubjectName {
 }
 
 model Chapter {
-  id                 String    @id @default(uuid())
-  subjectId          String
-  name               String
-  sequenceNumber     Int
-  isActive           Boolean   @default(true)
-  syllabusYear       String?
-  deletedSubtopics   Json      @default("[]")
+  id               String  @id @default(uuid())
+  subjectId        String
+  name             String
+  sequenceNumber   Int
+  isActive         Boolean @default(true)
+  syllabusYear     String?
+  deletedSubtopics Json    @default("[]")
 
-  subject          Subject   @relation(fields: [subjectId], references: [id])
-  problems         Problem[]
-  problemDrafts    ProblemDraft[]
-  scaffoldingLevels ScaffoldingLevel[]
+  subject            Subject              @relation(fields: [subjectId], references: [id])
+  problems           Problem[]
+  problemDrafts      ProblemDraft[]
+  scaffoldingLevels  ScaffoldingLevel[]
   scaffoldingHistory ScaffoldingHistory[]
-  sessions         Session[]
+  sessions           Session[]
+  chapterAssignments ChapterAssignment[]
 
   @@unique([subjectId, sequenceNumber])
   @@map("chapters")
 }
 
-model Problem {
-  id                   String    @id @default(uuid())
-  chapterId            String
-  source               String    @default("NCERT")
-  sourceReference      String?
-  rawText              String
-  unknownAnnotation    String
-  concreteRestatement  String
-  givens               Json
-  impliedGivens        Json      @default("[]")
-  conceptAnchor        String
-  problemType          String
-  difficultyTier       Int
-  requiresSketch       Boolean   @default(false)
-  isActive             Boolean   @default(true)
-  contentReviewedBy    String?
-  contentReviewedAt    DateTime?
-  createdAt            DateTime  @default(now())
+model ChapterAssignment {
+  id         String   @id @default(uuid())
+  studentId  String
+  chapterId  String
+  assignedBy String
+  assignedAt DateTime @default(now())
 
-  chapter              Chapter   @relation(fields: [chapterId], references: [id])
-  reviewer             User?     @relation(fields: [contentReviewedBy], references: [id])
-  annotations          ProblemAnnotation[]
-  sessionInteractions  SessionInteraction[]
-  sourceDraft          ProblemDraft?
+  student  StudentProfile @relation(fields: [studentId], references: [id])
+  chapter  Chapter        @relation(fields: [chapterId], references: [id])
+  assigner User           @relation("ChapterAssigner", fields: [assignedBy], references: [id])
+
+  @@unique([studentId, chapterId])
+  @@map("chapter_assignments")
+}
+
+model Problem {
+  id                  String    @id @default(uuid())
+  chapterId           String
+  source              String    @default("NCERT")
+  sourceReference     String?
+  rawText             String
+  unknownAnnotation   String
+  concreteRestatement String
+  givens              Json
+  impliedGivens       Json      @default("[]")
+  conceptAnchor       String
+  problemType         String
+  difficultyTier      Int
+  requiresSketch      Boolean   @default(false)
+  isActive            Boolean   @default(true)
+  contentReviewedBy   String?
+  contentReviewedAt   DateTime?
+  createdAt           DateTime  @default(now())
+
+  chapter             Chapter              @relation(fields: [chapterId], references: [id])
+  reviewer            User?                @relation(fields: [contentReviewedBy], references: [id])
+  annotations         ProblemAnnotation[]
+  sessionInteractions SessionInteraction[]
+  sourceDraft         ProblemDraft?
 
   @@map("problems")
 }
@@ -271,15 +289,15 @@ enum DraftStatus {
 }
 
 model ProblemAnnotation {
-  id              String          @id @default(uuid())
-  problemId       String
-  annotationType  AnnotationType
-  annotationText  String
-  hintText        String
-  sequenceOrder   Int
-  createdAt       DateTime        @default(now())
+  id             String         @id @default(uuid())
+  problemId      String
+  annotationType AnnotationType
+  annotationText String
+  hintText       String
+  sequenceOrder  Int
+  createdAt      DateTime       @default(now())
 
-  problem         Problem         @relation(fields: [problemId], references: [id])
+  problem             Problem              @relation(fields: [problemId], references: [id])
   sessionInteractions SessionInteraction[]
 
   @@unique([problemId, annotationType, sequenceOrder])
@@ -293,46 +311,71 @@ enum AnnotationType {
   concept_anchor
 }
 
+enum FadeAnnotationType {
+  unknown
+  given
+  implied_given
+}
+
 model ScaffoldingLevel {
-  id                  String    @id @default(uuid())
+  id                  String   @id @default(uuid())
   studentId           String
   chapterId           String
-  currentLevel        Decimal   @default(0.000) @db.Decimal(4, 3)
-  problemsAttempted   Int       @default(0)
-  problemsClean       Int       @default(0)
-  consecutiveClean    Int       @default(0)
-  consecutiveFailures Int       @default(0)
-  lastUpdatedAt       DateTime  @default(now())
-  createdAt           DateTime  @default(now())
+  currentLevel        Decimal  @default(0.000) @db.Decimal(4, 3)
+  problemsAttempted   Int      @default(0)
+  problemsClean       Int      @default(0)
+  consecutiveClean    Int      @default(0)
+  consecutiveFailures Int      @default(0)
+  lastUpdatedAt       DateTime @default(now())
+  createdAt           DateTime @default(now())
 
-  student             StudentProfile @relation(fields: [studentId], references: [id])
-  chapter             Chapter   @relation(fields: [chapterId], references: [id])
+  student StudentProfile           @relation(fields: [studentId], references: [id])
+  chapter Chapter                  @relation(fields: [chapterId], references: [id])
+  byType  ScaffoldingLevelByType[] // <-- ADD THIS LINE
 
   @@unique([studentId, chapterId])
   @@map("scaffolding_levels")
 }
 
-model Session {
-  id                      String    @id @default(uuid())
-  studentId               String
-  chapterId               String
-  startedAt               DateTime  @default(now())
-  endedAt                 DateTime?
-  endReason               EndReason?
-  problemsPresented       Int       @default(0)
-  problemsAttempted       Int       @default(0)
-  scaffoldingLevelStart   Decimal   @db.Decimal(4, 3)
-  scaffoldingLevelEnd     Decimal?  @db.Decimal(4, 3)
-  sessionEndStatement     String?
-  aiModelUsed             String?
-  createdAt               DateTime  @default(now())
+model ScaffoldingLevelByType {
+  id                  String             @id @default(uuid())
+  scaffoldingLevelId  String
+  annotationType      FadeAnnotationType
+  level               Decimal            @default(0.000) @db.Decimal(4, 3)
+  problemsAttempted   Int                @default(0)
+  problemsClean       Int                @default(0)
+  consecutiveClean    Int                @default(0)
+  consecutiveFailures Int                @default(0)
+  lastUpdatedAt       DateTime           @default(now())
+  createdAt           DateTime           @default(now())
 
-  student                 StudentProfile @relation(fields: [studentId], references: [id])
-  chapter                 Chapter   @relation(fields: [chapterId], references: [id])
-  interactions            SessionInteraction[]
-  scaffoldingHistory      ScaffoldingHistory[]
-  teacherObservations     TeacherObservation[]
-  aiCalls                 AiCall[]
+  scaffoldingLevel ScaffoldingLevel @relation(fields: [scaffoldingLevelId], references: [id])
+
+  @@unique([scaffoldingLevelId, annotationType])
+  @@map("scaffolding_levels_by_type")
+}
+
+model Session {
+  id                    String     @id @default(uuid())
+  studentId             String
+  chapterId             String
+  startedAt             DateTime   @default(now())
+  endedAt               DateTime?
+  endReason             EndReason?
+  problemsPresented     Int        @default(0)
+  problemsAttempted     Int        @default(0)
+  scaffoldingLevelStart Decimal    @db.Decimal(4, 3)
+  scaffoldingLevelEnd   Decimal?   @db.Decimal(4, 3)
+  sessionEndStatement   String?
+  aiModelUsed           String?
+  createdAt             DateTime   @default(now())
+
+  student             StudentProfile       @relation(fields: [studentId], references: [id])
+  chapter             Chapter              @relation(fields: [chapterId], references: [id])
+  interactions        SessionInteraction[]
+  scaffoldingHistory  ScaffoldingHistory[]
+  teacherObservations TeacherObservation[]
+  aiCalls             AiCall[]
 
   @@map("sessions")
 }
@@ -346,23 +389,23 @@ enum EndReason {
 }
 
 model SessionInteraction {
-  id                String              @id @default(uuid())
-  sessionId         String
-  studentId         String
-  problemId         String
-  interactionType   InteractionType
-  annotationId      String?
-  studentResponse   String?
-  isCorrect         Boolean?
-  scaffoldingLevelAt Decimal            @db.Decimal(4, 3)
-  timeOnStepMs      Int?
-  comparisonData    Json?
-  mode3PromptType   String?
-  createdAt         DateTime            @default(now())
+  id                 String          @id @default(uuid())
+  sessionId          String
+  studentId          String
+  problemId          String
+  interactionType    InteractionType
+  annotationId       String?
+  studentResponse    String?
+  isCorrect          Boolean?
+  scaffoldingLevelAt Decimal         @db.Decimal(4, 3)
+  timeOnStepMs       Int?
+  comparisonData     Json?
+  mode3PromptType    String?
+  createdAt          DateTime        @default(now())
 
-  session           Session             @relation(fields: [sessionId], references: [id])
-  problem           Problem             @relation(fields: [problemId], references: [id])
-  annotation        ProblemAnnotation?  @relation(fields: [annotationId], references: [id])
+  session    Session            @relation(fields: [sessionId], references: [id])
+  problem    Problem            @relation(fields: [problemId], references: [id])
+  annotation ProblemAnnotation? @relation(fields: [annotationId], references: [id])
 
   @@index([sessionId, createdAt])
   @@index([studentId, createdAt])
@@ -383,18 +426,18 @@ enum InteractionType {
 }
 
 model ScaffoldingHistory {
-  id          String    @id @default(uuid())
+  id          String            @id @default(uuid())
   studentId   String
   chapterId   String
   sessionId   String
-  levelBefore Decimal   @db.Decimal(4, 3)
-  levelAfter  Decimal   @db.Decimal(4, 3)
-  delta       Decimal   @db.Decimal(4, 3)
+  levelBefore Decimal           @db.Decimal(4, 3)
+  levelAfter  Decimal           @db.Decimal(4, 3)
+  delta       Decimal           @db.Decimal(4, 3)
   reason      ScaffoldingReason
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime          @default(now())
 
-  chapter     Chapter   @relation(fields: [chapterId], references: [id])
-  session     Session   @relation(fields: [sessionId], references: [id])
+  chapter Chapter @relation(fields: [chapterId], references: [id])
+  session Session @relation(fields: [sessionId], references: [id])
 
   @@index([studentId, chapterId, createdAt])
   @@map("scaffolding_history")
@@ -409,7 +452,7 @@ enum ScaffoldingReason {
 }
 
 model AiCall {
-  id            String      @id @default(uuid())
+  id            String     @id @default(uuid())
   callType      AiCallType
   studentId     String?
   sessionId     String?
@@ -420,10 +463,10 @@ model AiCall {
   outputTokens  Int?
   latencyMs     Int?
   responseText  String?
-  wasUsed       Boolean     @default(true)
-  createdAt     DateTime    @default(now())
+  wasUsed       Boolean    @default(true)
+  createdAt     DateTime   @default(now())
 
-  session       Session?    @relation(fields: [sessionId], references: [id])
+  session Session? @relation(fields: [sessionId], references: [id])
 
   @@map("ai_calls")
 }
@@ -438,22 +481,22 @@ enum AiCallType {
 }
 
 model ParentSummary {
-  id                              String    @id @default(uuid())
+  id                              String           @id @default(uuid())
   studentId                       String
   parentId                        String
   weekStartDate                   DateTime
-  problemsPresented               Int       @default(0)
-  problemsIndependentlyIdentified Int       @default(0)
-  scaffoldingLevelStart           Decimal?  @db.Decimal(4, 3)
-  scaffoldingLevelEnd             Decimal?  @db.Decimal(4, 3)
+  problemsPresented               Int              @default(0)
+  problemsIndependentlyIdentified Int              @default(0)
+  scaffoldingLevelStart           Decimal?         @db.Decimal(4, 3)
+  scaffoldingLevelEnd             Decimal?         @db.Decimal(4, 3)
   summaryText                     String
   aiCallId                        String?
   deliveredVia                    DeliveryChannel?
   deliveredAt                     DateTime?
-  createdAt                       DateTime  @default(now())
+  createdAt                       DateTime         @default(now())
 
-  student                         User      @relation("StudentParentSummaries", fields: [studentId], references: [id])
-  parent                          User      @relation("ParentSummaries", fields: [parentId], references: [id])
+  student User @relation("StudentParentSummaries", fields: [studentId], references: [id])
+  parent  User @relation("ParentSummaries", fields: [parentId], references: [id])
 
   @@unique([studentId, weekStartDate])
   @@map("parent_summaries")
@@ -467,17 +510,17 @@ enum DeliveryChannel {
 }
 
 model TeacherObservation {
-  id          String              @id @default(uuid())
+  id          String          @id @default(uuid())
   teacherId   String
   studentId   String
   sessionId   String?
   observation String
   tag         ObservationTag?
-  createdAt   DateTime            @default(now())
+  createdAt   DateTime        @default(now())
 
-  teacher     User                @relation("TeacherObservations", fields: [teacherId], references: [id])
-  student     User                @relation("ObservedStudents", fields: [studentId], references: [id])
-  session     Session?            @relation(fields: [sessionId], references: [id])
+  teacher User     @relation("TeacherObservations", fields: [teacherId], references: [id])
+  student User     @relation("ObservedStudents", fields: [studentId], references: [id])
+  session Session? @relation(fields: [sessionId], references: [id])
 
   @@map("teacher_observations")
 }

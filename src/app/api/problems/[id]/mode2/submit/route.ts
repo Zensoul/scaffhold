@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { InteractionType, ScaffoldingReason } from '@prisma/client'
+import { InteractionType } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 import { gradeAnswer } from '@/lib/ai/grade-answer'
 import { generateComparisonQuestion } from '@/lib/ai/comparison-question'
-
-const LEVEL_DELTA_CORRECT = 0.05
-const LEVEL_DELTA_INCORRECT = -0.02
+import { updateScaffoldingLevel } from '@/lib/scaffolding/update-level'
 
 export async function POST(
   request: NextRequest,
@@ -81,8 +79,6 @@ export async function POST(
   }
 
   const levelBefore = scaffoldingLevel.currentLevel
-  const delta = correct ? LEVEL_DELTA_CORRECT : LEVEL_DELTA_INCORRECT
-  const levelAfter = Math.max(0, Math.min(1, Number(levelBefore) + delta))
 
   // Only generate the comparison question once the student has ALREADY
   // missed this piece before. A first-ever miss gets NO comparison
@@ -100,6 +96,34 @@ export async function POST(
       })
     : null
 
+  // annotation.annotationType is 'unknown' | 'given' | 'implied_given' |
+  // 'concept_anchor' — Mode 2 only ever fades FADEABLE_TYPES (the first
+  // three; see the GET route), so concept_anchor should never reach this
+  // route in practice, but the guard keeps that invariant explicit
+  // rather than assumed, and keeps updateScaffoldingLevel's typed
+  // FadeAnnotationType parameter honest.
+  if (!['unknown', 'given', 'implied_given'].includes(annotation.annotationType)) {
+    return NextResponse.json(
+      { error: 'concept_anchor annotations are never gradeable in Mode 2' },
+      { status: 500 }
+    )
+  }
+
+  // Updates the per-type sub-score (ScaffoldingLevelByType) for this
+  // annotation's type, recomputes the weighted composite from ALL
+  // sub-scores, mirrors problemsAttempted/problemsClean/consecutiveClean/
+  // consecutiveFailures onto the parent ScaffoldingLevel row (so
+  // session-guard.ts's consecutiveFailures check keeps working exactly
+  // as before), and writes the ScaffoldingHistory audit row — all inside
+  // one DB transaction. Replaces the old flat +0.05/-0.02 scalar update.
+  const { composite: levelAfter } = await updateScaffoldingLevel(prisma, {
+    studentId,
+    chapterId: problem.chapterId,
+    sessionId,
+    annotationType: annotation.annotationType as 'unknown' | 'given' | 'implied_given',
+    wasCorrect: correct,
+  })
+
   const [interaction] = await prisma.$transaction([
     prisma.sessionInteraction.create({
       data: {
@@ -115,29 +139,6 @@ export async function POST(
         scaffoldingLevelAt: levelAfter,
         timeOnStepMs,
         comparisonData: comparisonQuestion ? JSON.parse(JSON.stringify(comparisonQuestion)) : undefined,
-      },
-    }),
-    prisma.scaffoldingLevel.update({
-      where: { studentId_chapterId: { studentId, chapterId: problem.chapterId } },
-      data: {
-        currentLevel: levelAfter,
-        problemsAttempted: { increment: 1 },
-        problemsClean: correct ? { increment: 1 } : undefined,
-        consecutiveClean: correct ? { increment: 1 } : 0,
-        consecutiveFailures: correct ? 0 : { increment: 1 },
-      },
-    }),
-    prisma.scaffoldingHistory.create({
-      data: {
-        studentId,
-        chapterId: problem.chapterId,
-        sessionId,
-        levelBefore,
-        levelAfter,
-        delta,
-        reason: correct
-          ? ScaffoldingReason.correct_answer
-          : ScaffoldingReason.incorrect_answer,
       },
     }),
     prisma.session.update({

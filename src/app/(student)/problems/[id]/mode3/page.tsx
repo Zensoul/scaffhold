@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { ContentPage } from '@/components/shared/page-layout'
 
 type Mode3Response =
@@ -21,11 +21,13 @@ type Mode3Response =
       sessionEnded: true
       reason: string
       statement: string | null
+      chapterId: string
     }
 
 export default function Mode3Page() {
   const { id } = useParams<{ id: string }>()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const sessionId = searchParams.get('sessionId')
 
   const [data, setData] = useState<Mode3Response | null>(null)
@@ -34,6 +36,7 @@ export default function Mode3Page() {
   const [startTime, setStartTime] = useState<number>(Date.now())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [startingNewSession, setStartingNewSession] = useState(false)
 
   const loadPrompt = useCallback(() => {
     if (!sessionId) {
@@ -83,6 +86,32 @@ export default function Mode3Page() {
     setResult(json)
   }
 
+  // Same recovery path as Mode 2: lets the student (or a tester) get past
+  // a session-ended screen without manual database editing. forceNew
+  // closes the stale session and resets ScaffoldingLevel.consecutiveFailures
+  // for this chapter, which otherwise persists and would immediately
+  // re-trip the guard on the very next problem fetch.
+  async function handleStartNewSession(chapterId: string) {
+    setStartingNewSession(true)
+    try {
+      const res = await fetch('/api/sessions/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chapterId, forceNew: true }),
+      })
+
+      if (!res.ok) {
+        setError('Could not start a new session — please try again.')
+        return
+      }
+
+      const json = await res.json()
+      router.push(`/problems/${id}/start?sessionId=${json.session.id}&showExample=true`)
+    } finally {
+      setStartingNewSession(false)
+    }
+  }
+
   if (loading) return <ContentPage maxWidth={640}>Loading...</ContentPage>
   if (error) return <ContentPage maxWidth={640}><span style={{ color: 'crimson' }}>{error}</span></ContentPage>
   if (!data) return null
@@ -91,9 +120,30 @@ export default function Mode3Page() {
     return (
       <ContentPage maxWidth={640}>
         <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1.5rem', textAlign: 'center', marginTop: '3rem' }}>
-          <p style={{ fontSize: '1.05rem', color: '#111' }}>
+          <p style={{ fontSize: '1.05rem', color: '#111', marginBottom: '1rem' }}>
             {data.statement ?? 'That session is complete. Come back tomorrow.'}
           </p>
+
+          <button
+            onClick={() => handleStartNewSession(data.chapterId)}
+            disabled={startingNewSession}
+            style={{
+              padding: '0.5rem 1.25rem',
+              color: '#fff',
+              background: '#2563eb',
+              border: 'none',
+              borderRadius: 4,
+              cursor: startingNewSession ? 'default' : 'pointer',
+              fontSize: '1rem',
+              opacity: startingNewSession ? 0.7 : 1,
+            }}
+          >
+            {startingNewSession
+              ? 'Starting...'
+              : data.reason === 'consecutive_failures'
+              ? 'Take a breath and try again'
+              : 'Start a new session'}
+          </button>
         </div>
       </ContentPage>
     )

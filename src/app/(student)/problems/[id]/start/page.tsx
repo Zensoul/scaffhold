@@ -2,22 +2,29 @@ import { prisma } from '@/lib/db/prisma'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 
-
 const MODE_3_THRESHOLD = 0.8
 
-// Separate route from /problems/[id] (which is the existing, working
-// Mode 1 page and must not be touched). Visit THIS route when you want
-// the system to decide Mode 2 vs Mode 3 automatically based on
-// currentLevel, rather than linking directly to a specific mode.
+// Central routing decision for "what should this student see next":
+// - No scaffolding history yet on this chapter → Mode 1 (worked example).
+//   A student's very first problem in a chapter shouldn't be a blind
+//   fade or an independent attempt; show them how it's done first.
+// - Otherwise, existing logic: Mode 3 once currentLevel clears the
+//   threshold, Mode 2 below it.
+//
+// This is also the target of the session-recovery flow (see mode2/mode3
+// pages): after two consecutive misses, the recovery button sends the
+// student back here rather than directly reloading the same mode, so
+// the guided-walkthrough decision lives in one place, not duplicated
+// across every mode page.
 export default async function ProblemRouterPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ sessionId?: string }>
+  searchParams: Promise<{ sessionId?: string; showExample?: string }>
 }) {
   const { id } = await params
-  const { sessionId } = await searchParams
+  const { sessionId, showExample } = await searchParams
 
   if (!sessionId) {
     notFound()
@@ -34,8 +41,20 @@ export default async function ProblemRouterPage({
     where: { studentId_chapterId: { studentId, chapterId: problem.chapterId } },
   })
 
-  const currentLevel = scaffoldingLevel ? Number(scaffoldingLevel.currentLevel) : 0
+  // Explicit request for the worked example — from session recovery
+  // after consecutive misses, or later, a student-initiated "show me
+  // an example" affordance.
+  if (showExample === 'true') {
+    redirect(`/problems/${id}/mode1?sessionId=${sessionId}`)
+  }
 
+  const isBrandNewChapter = !scaffoldingLevel || scaffoldingLevel.problemsAttempted === 0
+
+  if (isBrandNewChapter) {
+    redirect(`/problems/${id}/mode1?sessionId=${sessionId}`)
+  }
+
+  const currentLevel = scaffoldingLevel ? Number(scaffoldingLevel.currentLevel) : 0
   const targetMode = currentLevel > MODE_3_THRESHOLD ? 'mode3' : 'mode2'
 
   redirect(`/problems/${id}/${targetMode}?sessionId=${sessionId}`)

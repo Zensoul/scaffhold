@@ -67,6 +67,7 @@ type Mode2Response =
       sessionEnded: true
       reason: string
       statement: string | null
+      chapterId: string
     }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -91,6 +92,7 @@ export default function Mode2Page() {
   const [startTime, setStartTime] = useState<number>(Date.now())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [startingNewSession, setStartingNewSession] = useState(false)
 
   const loadProblem = useCallback(() => {
     if (!sessionId) {
@@ -188,6 +190,34 @@ export default function Mode2Page() {
     }
   }
 
+  // Lets the student (or a tester) recover from a session that has
+  // ended — timeout, natural completion, or the consecutive-failure
+  // circuit-breaker — without any manual database editing. Calls
+  // /api/sessions/start with forceNew: true, which closes out the
+  // stale session and resets the consecutiveFailures streak on
+  // ScaffoldingLevel (that counter otherwise persists across sessions
+  // and would immediately re-trip the guard on the very next check).
+  async function handleStartNewSession(chapterId: string) {
+    setStartingNewSession(true)
+    try {
+      const res = await fetch('/api/sessions/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chapterId, forceNew: true }),
+      })
+
+      if (!res.ok) {
+        setError('Could not start a new session — please try again.')
+        return
+      }
+
+      const json = await res.json()
+        router.push(`/problems/${id}/start?sessionId=${json.session.id}&showExample=true`)
+    } finally {
+      setStartingNewSession(false)
+    }
+  }
+
   if (loading) return <ContentPage maxWidth={640}>Loading...</ContentPage>
   if (error) return <ContentPage maxWidth={640}><span style={{ color: 'crimson' }}>{error}</span></ContentPage>
   if (!data) return null
@@ -204,9 +234,30 @@ export default function Mode2Page() {
             marginTop: '3rem',
           }}
         >
-          <p style={{ fontSize: '1.05rem', color: '#111', marginBottom: '0.5rem' }}>
+          <p style={{ fontSize: '1.05rem', color: '#111', marginBottom: '1rem' }}>
             {data.statement ?? 'That session is complete. Come back tomorrow.'}
           </p>
+
+          <button
+            onClick={() => handleStartNewSession(data.chapterId)}
+            disabled={startingNewSession}
+            style={{
+              padding: '0.5rem 1.25rem',
+              color: '#fff',
+              background: '#2563eb',
+              border: 'none',
+              borderRadius: 4,
+              cursor: startingNewSession ? 'default' : 'pointer',
+              fontSize: '1rem',
+              opacity: startingNewSession ? 0.7 : 1,
+            }}
+          >
+            {startingNewSession
+              ? 'Starting...'
+              : data.reason === 'consecutive_failures'
+              ? 'Take a breath and try again'
+              : 'Start a new session'}
+          </button>
         </div>
       </ContentPage>
     )

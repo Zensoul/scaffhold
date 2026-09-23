@@ -62,13 +62,19 @@ export async function GET(
         },
       })
 
-      return NextResponse.json({ sessionEnded: true, reason: guard.reason, statement })
+      return NextResponse.json({
+        sessionEnded: true,
+        reason: guard.reason,
+        statement,
+        chapterId: problem.chapterId,
+      })
     }
 
     return NextResponse.json({
       sessionEnded: true,
       reason: session?.endReason ?? guard.reason,
       statement: session?.sessionEndStatement ?? null,
+      chapterId: problem.chapterId,
     })
   }
 
