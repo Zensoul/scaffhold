@@ -90,6 +90,256 @@ const ERROR_TYPE_NUDGE: Record<string, string> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+
+// ─── ComprehensionQuiz ────────────────────────────────────────────────────────
+// Active identification phase: student must pick the correct givens and unknown
+// from shuffled MCQ options — not just read and click through.
+
+type ComprehensionQuizProps = {
+  problem: ProblemInfo
+  allGivens: string[]
+  givenIndex: number
+  setGivenIndex: (n: number) => void
+  comprehensionPhase: 'givens' | 'unknown' | 'solving'
+  setComprehensionPhase: (p: 'givens' | 'unknown' | 'solving') => void
+  buildGivensChoices: (correctGivens: string[]) => string[]
+}
+
+function shuffle<T>(arr: T[], seed: number): T[] {
+  const a = [...arr]
+  let rng = seed
+  for (let i = a.length - 1; i > 0; i--) {
+    rng = (rng * 1664525 + 1013904223) & 0x7fffffff
+    const j = rng % (i + 1)
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+function makeDistractors(givens: string[]): string[] {
+  const distractors: string[] = []
+  givens.forEach(g => {
+    // Swap a number with a plausible wrong value
+    const mutated = g.replace(/(\d+(\.\d+)?)/, (_m: string, n: string) => {
+      const v = parseFloat(n)
+      return String(Math.round(v * 1.5))
+    })
+    if (mutated !== g) distractors.push(mutated)
+  })
+  // Always ensure at least one hard distractor
+  distractors.push('No additional data is needed')
+  return distractors
+}
+
+function ComprehensionQuiz({
+  problem, allGivens, givenIndex, setGivenIndex,
+  comprehensionPhase, setComprehensionPhase,
+}: ComprehensionQuizProps) {
+  // Per-given quiz state
+  const [selected, setSelected] = useState<string | null>(null)
+  const [result, setResult] = useState<'unanswered' | 'correct' | 'wrong'>('unanswered')
+  // Unknown phase
+  const [unknownSelected, setUnknownSelected] = useState<string | null>(null)
+  const [unknownResult, setUnknownResult] = useState<'unanswered' | 'correct' | 'wrong'>('unanswered')
+
+  // Seed for deterministic shuffle per given
+  const seed = (problem.rawText.charCodeAt(0) ?? 0) + givenIndex * 31
+
+  // Build choices for the current given: correct + distractors, shuffled
+  const currentGiven = allGivens[givenIndex] ?? ''
+  const distractors = makeDistractors(allGivens.filter((_, i) => i !== givenIndex))
+  const choices = shuffle([currentGiven, ...distractors.slice(0, 3)], seed)
+
+  // Build unknown choices: correct + distractor(s)
+  const unknownChoices = shuffle([
+    problem.unknownAnnotation,
+    ...allGivens.slice(0, 2).map(g => `Find ${g}`),
+    'Find the perimeter of the figure',
+  ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 4), seed + 99)
+
+  function handleGivenSelect(choice: string) {
+    if (result !== 'unanswered') return
+    setSelected(choice)
+    if (choice === currentGiven) {
+      setResult('correct')
+    } else {
+      setResult('wrong')
+    }
+  }
+
+  function handleNext() {
+    setSelected(null)
+    setResult('unanswered')
+    if (givenIndex < allGivens.length - 1) {
+      setGivenIndex(givenIndex + 1)
+    } else {
+      setComprehensionPhase('unknown')
+    }
+  }
+
+  function handleUnknownSelect(choice: string) {
+    if (unknownResult !== 'unanswered') return
+    setUnknownSelected(choice)
+    setUnknownResult(choice === problem.unknownAnnotation ? 'correct' : 'wrong')
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4 py-10 bg-muted/20">
+      <div className="w-full max-w-xl space-y-5">
+
+        {/* Problem statement */}
+        <div className="rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Problem</p>
+          <p className="text-sm text-gray-800 leading-relaxed">{problem.rawText}</p>
+          {problem.concreteRestatement && (
+            <p className="text-xs text-gray-500 italic mt-1.5">{problem.concreteRestatement}</p>
+          )}
+        </div>
+
+        {/* ── Phase: identify each given ── */}
+        {comprehensionPhase === 'givens' && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-5 space-y-4">
+            {/* Header */}
+            <div className="flex items-start gap-3">
+              <span className="text-2xl leading-none">📋</span>
+              <div>
+                <h2 className="text-sm font-semibold text-blue-900">
+                  Which of these is information given in the problem?
+                </h2>
+                <p className="text-xs text-blue-500 mt-0.5">
+                  Given {givenIndex + 1} of {allGivens.length} — select the correct one.
+                </p>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="flex gap-1.5">
+              {allGivens.map((_, i) => (
+                <div key={i} className={`flex-1 h-1.5 rounded-full transition-colors ${
+                  i < givenIndex ? 'bg-blue-500' : i === givenIndex ? 'bg-blue-700' : 'bg-blue-200'
+                }`} />
+              ))}
+            </div>
+
+            {/* MCQ choices */}
+            <div className="space-y-2">
+              {choices.map((choice) => {
+                const isSelected = selected === choice
+                const isCorrect = choice === currentGiven
+                let cls = 'w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors '
+                if (result === 'unanswered') {
+                  cls += isSelected
+                    ? 'border-blue-500 bg-blue-100 font-medium'
+                    : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                } else {
+                  if (isCorrect) cls += 'border-green-500 bg-green-50 text-green-800 font-medium'
+                  else if (isSelected) cls += 'border-red-400 bg-red-50 text-red-700'
+                  else cls += 'border-gray-200 bg-white text-gray-400'
+                }
+                return (
+                  <button key={choice} onClick={() => handleGivenSelect(choice)} className={cls} disabled={result !== 'unanswered'}>
+                    <span className="mr-2">
+                      {result !== 'unanswered' && isCorrect ? '✓ ' : ''}
+                      {result !== 'unanswered' && isSelected && !isCorrect ? '✗ ' : ''}
+                    </span>
+                    {choice}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Feedback + next */}
+            {result === 'correct' && (
+              <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 flex items-center justify-between">
+                <p className="text-sm text-green-800 font-medium">✓ Correct — that is given in the problem.</p>
+                <button onClick={handleNext}
+                  className="ml-4 shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-3 py-1.5">
+                  {givenIndex < allGivens.length - 1 ? 'Next given' : 'What to find →'}
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+            {result === 'wrong' && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 space-y-2">
+                <p className="text-sm text-red-700">✗ Not quite. Look at the problem again — the correct given is highlighted above.</p>
+                <button onClick={handleNext}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-3 py-1.5">
+                  {givenIndex < allGivens.length - 1 ? 'Continue anyway' : 'Move on →'}
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Phase: identify the unknown ── */}
+        {comprehensionPhase === 'unknown' && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl leading-none">🎯</span>
+              <div>
+                <h2 className="text-sm font-semibold text-amber-900">What does the question ask you to find?</h2>
+                <p className="text-xs text-amber-500 mt-0.5">Select the correct answer.</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {unknownChoices.map((choice) => {
+                const isSelected = unknownSelected === choice
+                const isCorrect = choice === problem.unknownAnnotation
+                let cls = 'w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors '
+                if (unknownResult === 'unanswered') {
+                  cls += isSelected
+                    ? 'border-amber-500 bg-amber-100 font-medium'
+                    : 'border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50'
+                } else {
+                  if (isCorrect) cls += 'border-green-500 bg-green-50 text-green-800 font-medium'
+                  else if (isSelected) cls += 'border-red-400 bg-red-50 text-red-700'
+                  else cls += 'border-gray-200 bg-white text-gray-400'
+                }
+                return (
+                  <button key={choice} onClick={() => handleUnknownSelect(choice)} className={cls} disabled={unknownResult !== 'unanswered'}>
+                    <span className="mr-2">
+                      {unknownResult !== 'unanswered' && isCorrect ? '✓ ' : ''}
+                      {unknownResult !== 'unanswered' && isSelected && !isCorrect ? '✗ ' : ''}
+                    </span>
+                    {choice}
+                  </button>
+                )
+              })}
+            </div>
+
+            {unknownResult === 'correct' && (
+              <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 flex items-center justify-between">
+                <p className="text-sm text-green-800 font-medium">✓ Exactly right. Now let&#39;s solve it.</p>
+                <button onClick={() => setComprehensionPhase('solving')}
+                  className="ml-4 shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-3 py-1.5">
+                  Start solving <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+            {unknownResult === 'wrong' && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 space-y-2">
+                <p className="text-sm text-red-700">✗ Not quite. The correct answer is highlighted above.</p>
+                <button onClick={() => setComprehensionPhase('solving')}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-3 py-1.5">
+                  Proceed to solving <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Skip link */}
+        <button onClick={() => setComprehensionPhase('solving')}
+          className="text-xs text-gray-400 hover:text-gray-500 underline underline-offset-2 block text-center">
+          Skip understanding check
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function GuidedPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -127,9 +377,10 @@ export default function GuidedPage() {
   const [followUpResult, setFollowUpResult] = useState<'correct' | 'wrong' | null>(null)
 
   // ── Comprehension phase — before any solve steps ─────────────────────────
-  // 'givens' → student reviews each given; 'unknown' → confirms what to find; 'solving' → normal steps
+  // 'givens' → student identifies each given; 'unknown' → identifies what to find; 'solving' → normal steps
   const [comprehensionPhase, setComprehensionPhase] = useState<'givens' | 'unknown' | 'solving'>('givens')
   const [givenIndex, setGivenIndex] = useState(0)
+
 
   // Confidence gate — concept steps require student to self-assess before attempting
   const [confidenceGatePassed, setConfidenceGatePassed] = useState<boolean>(true)
@@ -283,109 +534,20 @@ export default function GuidedPage() {
   const step = data.step
 
   // ── Comprehension phase ────────────────────────────────────────────────────
-  // Shown before any solve steps — helps student identify givens and unknown
+  // Active identification: student must select givens and unknown, not just read them
   const allGivens = [...(data.problem.givens ?? []), ...(data.problem.impliedGivens ?? [])]
 
   if (comprehensionPhase !== 'solving') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4 py-10">
-        <div className="w-full max-w-xl space-y-6">
-
-          {/* Problem statement */}
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Problem</p>
-            <p className="text-sm text-gray-800 leading-relaxed">{data.problem.rawText}</p>
-            {data.problem.concreteRestatement && (
-              <p className="text-xs text-gray-500 italic mt-1">{data.problem.concreteRestatement}</p>
-            )}
-          </div>
-
-          {/* Phase: Givens */}
-          {comprehensionPhase === 'givens' && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-blue-600 text-lg">📋</span>
-                <h2 className="text-base font-semibold text-blue-900">What information do you have?</h2>
-              </div>
-              <p className="text-xs text-blue-600">
-                Read each piece of given information and confirm you understand it before moving on.
-              </p>
-
-              {/* Progress dots */}
-              <div className="flex gap-1.5">
-                {allGivens.map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-5 h-1.5 rounded-full transition-colors ${
-                      i < givenIndex ? 'bg-blue-500' : i === givenIndex ? 'bg-blue-700' : 'bg-blue-200'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {allGivens.length > 0 ? (
-                <div className="rounded-lg border border-blue-300 bg-white px-4 py-4 space-y-3">
-                  <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide">
-                    Given {givenIndex + 1} of {allGivens.length}
-                  </p>
-                  <p className="text-sm text-gray-800 font-medium">{allGivens[givenIndex]}</p>
-                  <button
-                    onClick={() => {
-                      if (givenIndex < allGivens.length - 1) {
-                        setGivenIndex(i => i + 1)
-                      } else {
-                        setComprehensionPhase('unknown')
-                      }
-                    }}
-                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 transition-colors"
-                  >
-                    {givenIndex < allGivens.length - 1 ? 'Got it — next' : 'I have all the information'}
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setComprehensionPhase('unknown')}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2"
-                >
-                  Continue <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Phase: Unknown */}
-          {comprehensionPhase === 'unknown' && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-amber-600 text-lg">🎯</span>
-                <h2 className="text-base font-semibold text-amber-900">What do you need to find?</h2>
-              </div>
-              <p className="text-xs text-amber-600">
-                Before solving, be clear about what the question is asking for.
-              </p>
-              <div className="rounded-lg border border-amber-300 bg-white px-4 py-4 space-y-3">
-                <p className="text-sm text-gray-800 font-medium">{data.problem.unknownAnnotation}</p>
-                <button
-                  onClick={() => setComprehensionPhase('solving')}
-                  className="inline-flex items-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-4 py-2 transition-colors"
-                >
-                  I know what to find — let&#39;s solve
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Skip link */}
-          <button
-            onClick={() => { setComprehensionPhase('solving') }}
-            className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 block text-center"
-          >
-            Skip understanding check
-          </button>
-        </div>
-      </div>
+      <ComprehensionQuiz
+        problem={data.problem}
+        allGivens={allGivens}
+        givenIndex={givenIndex}
+        setGivenIndex={setGivenIndex}
+        comprehensionPhase={comprehensionPhase}
+        setComprehensionPhase={setComprehensionPhase}
+        buildGivensChoices={() => []}
+      />
     )
   }
 
