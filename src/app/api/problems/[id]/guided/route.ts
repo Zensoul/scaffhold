@@ -45,8 +45,6 @@ type GuidedStepResponse = {
   // Adaptive error type — helps frontend show targeted nudge
   errorType: 'formula' | 'substitution' | 'arithmetic' | null
   attemptCount: number
-  totalSteps: number
-  answeredSoFar: number
 }
 
 // ─── Adaptive error classification ───────────────────────────────────────────
