@@ -661,7 +661,7 @@ const mirrorStages: Record<number, (props: StageProps) => JSX.Element> = {
       <circle cx="230" cy="190" r="4" fill={GOLD}/><text x="220" y="182" fontSize="13" fill={GOLD} fontWeight="bold">F</text>
       <circle cx="140" cy="190" r="4" fill={GREEN}/><text x="128" y="182" fontSize="13" fill={GREEN} fontWeight="bold">C</text>
       {/* Object */}
-      <line x1="60" y1="190" x2="60" y2="110" stroke={RED} strokeWidth="2"}/>
+      <line x1="60" y1="190" x2="60" y2="110" stroke={RED} strokeWidth="2"/>
       <polygon points="60,102 55,118 65,118" fill={RED}/>
       <text x="42" y="200" fontSize="12" fill={RED} fontWeight="bold">O</text>
       {/* Image arrow — real, inverted, between F and C */}
@@ -771,7 +771,7 @@ const lensStages: Record<number, (props: StageProps) => JSX.Element> = {
       <circle cx="190" cy="190" r="4" fill={BLUE}/>
       <circle cx="270" cy="190" r="4" fill={GOLD}/><text x="276" y="182" fontSize="13" fill={GOLD} fontWeight="bold">F₂</text>
       {/* Object */}
-      <line x1="55" y1="190" x2="55" y2="120" stroke={RED} strokeWidth="2"}/>
+      <line x1="55" y1="190" x2="55" y2="120" stroke={RED} strokeWidth="2"/>
       <polygon points="55,112 50,128 60,128" fill={RED}/>
       <text x="38" y="200" fontSize="12" fill={RED} fontWeight="bold">O</text>
       {/* Image arrow — real, inverted, beyond F₂ */}
