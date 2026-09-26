@@ -33,6 +33,8 @@ type GuidedStep = {
   attemptCount: number
   totalSteps: number
   answeredSoFar: number
+  conceptVideoUrl: string | null
+  socraticPrompt: string | null
 }
 
 type ProblemInfo = {
@@ -382,6 +384,12 @@ export default function GuidedPage() {
   const [givenIndex, setGivenIndex] = useState(0)
 
 
+  // Socratic prompt — student must write a think-first response before MCQ
+  const [socraticText, setSocraticText] = useState<string>('')
+  const [socraticSubmitted, setSocraticSubmitted] = useState<boolean>(false)
+  // Video panel
+  const [showVideoPanel, setShowVideoPanel] = useState<boolean>(false)
+
   // Confidence gate — concept steps require student to self-assess before attempting
   const [confidenceGatePassed, setConfidenceGatePassed] = useState<boolean>(true)
   const [confidenceUnsure, setConfidenceUnsure] = useState<boolean>(false)
@@ -404,6 +412,9 @@ export default function GuidedPage() {
     setSelfExplainSubmitted(false)
     setFollowUpAnswer('')
     setFollowUpResult(null)
+    setSocraticText('')
+    setSocraticSubmitted(false)
+    setShowVideoPanel(false)
     setConfidenceGatePassed(true)  // will be overridden after fetch for concept steps
     setConfidenceUnsure(false)
     // Note: comprehension phase only resets on first load (givenIndex/comprehensionPhase
@@ -662,6 +673,72 @@ export default function GuidedPage() {
 
           {/* Prompt */}
           <p className="text-base text-foreground leading-relaxed">{step.prompt}</p>
+
+          {/* ── Option B: Concept video panel (concept steps only) ──────────── */}
+          {step.stepType === 'concept' && step.conceptVideoUrl && (
+            <div className="rounded-lg border border-violet-200 bg-violet-50 overflow-hidden">
+              <button
+                onClick={() => setShowVideoPanel(v => !v)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-violet-100 transition-colors"
+              >
+                <span className="text-lg leading-none">🎬</span>
+                <div>
+                  <p className="text-sm font-semibold text-violet-900">
+                    {showVideoPanel ? 'Hide explanation' : 'Why does this concept apply here?'}
+                  </p>
+                  <p className="text-xs text-violet-500">Short animation — watch before you attempt</p>
+                </div>
+                <span className="ml-auto text-violet-400 text-xs">{showVideoPanel ? '▲' : '▼'}</span>
+              </button>
+              {showVideoPanel && (
+                <div className="px-4 pb-4">
+                  <video
+                    src={step.conceptVideoUrl}
+                    controls
+                    autoPlay
+                    className="w-full rounded-lg border border-violet-200 bg-black"
+                    style={{ maxHeight: '280px' }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Option C: Socratic think-first prompt (concept steps only) ────── */}
+          {step.stepType === 'concept' && step.socraticPrompt && !socraticSubmitted && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-xl leading-none mt-0.5">🤔</span>
+                <div>
+                  <p className="text-sm font-semibold text-orange-900">Think first — before you choose:</p>
+                  <p className="text-sm text-orange-800 mt-1">{step.socraticPrompt}</p>
+                </div>
+              </div>
+              <textarea
+                className="w-full rounded-lg border border-orange-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-orange-400"
+                rows={2}
+                placeholder="Write your thinking here (a few words is fine)…"
+                value={socraticText}
+                onChange={e => setSocraticText(e.target.value)}
+              />
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSocraticSubmitted(true)}
+                  disabled={socraticText.trim().length < 3}
+                  className="inline-flex items-center gap-2 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 transition-colors"
+                >
+                  Done thinking — show me the options
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setSocraticSubmitted(true)}
+                  className="text-xs text-orange-400 hover:text-orange-600 underline underline-offset-2"
+                >
+                  Skip
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Feedback from previous wrong attempt */}
           {feedback && (

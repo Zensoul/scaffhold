@@ -45,6 +45,9 @@ type GuidedStepResponse = {
   // Adaptive error type — helps frontend show targeted nudge
   errorType: 'formula' | 'substitution' | 'arithmetic' | null
   attemptCount: number
+  // Concept enrichment — only on concept steps
+  conceptVideoUrl: string | null   // animation explaining WHY this concept applies
+  socraticPrompt: string | null    // think-first question before MCQ attempt
 }
 
 // ─── Adaptive error classification ───────────────────────────────────────────
@@ -273,6 +276,8 @@ export async function GET(
           : null,
       errorType: null,
       attemptCount,
+      conceptVideoUrl: nextStep.stepType === 'concept' ? (nextStep.conceptVideoUrl ?? null) : null,
+      socraticPrompt: nextStep.stepType === 'concept' ? (nextStep.socraticPrompt ?? null) : null,
     } satisfies GuidedStepResponse,
   })
 }

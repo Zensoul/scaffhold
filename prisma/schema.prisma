@@ -664,6 +664,8 @@ model SolveStep {
   followUpAnswer        String?            // Correct answer for follow-up (numeric or MCQ text)
   followUpInputType     InputType?         // 'numeric' or 'mcq'
   followUpTolerance     Float?             // Tolerance for numeric follow-up
+  conceptVideoUrl       String?            // Short video/animation explaining WHY this concept applies (Option B)
+  socraticPrompt        String?            // Think-first question before the MCQ attempt (Option C)
   options               SolveStepOption[]
   attempts              SolveAttempt[]
 
