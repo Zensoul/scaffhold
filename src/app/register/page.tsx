@@ -58,7 +58,10 @@ export default function RegisterPage() {
       setLoading(false)
 
       if (signInResult?.error) {
-        router.push('/login')
+        // Auto-login failed after signup — send to login page with a
+        // helpful message so the user knows their account was created
+        // but they need to log in manually.
+        router.push('/login?registered=1')
         return
       }
 
