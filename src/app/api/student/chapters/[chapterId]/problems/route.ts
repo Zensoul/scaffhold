@@ -10,7 +10,9 @@ export async function GET(
   const { chapterId } = await params
   const studentId = await getCurrentStudentId()
 
-  const [allProblems, interactions, nextProblem] = await Promise.all([
+  // Fetch problems and interactions in parallel — then pass BOTH into
+  // selectNextProblem so it doesn't re-fetch the same rows a second time.
+  const [allProblems, interactions] = await Promise.all([
     prisma.problem.findMany({
       where: { chapterId, isActive: true },
       orderBy: { createdAt: 'asc' },
@@ -26,10 +28,27 @@ export async function GET(
     }),
     prisma.sessionInteraction.findMany({
       where: { studentId, problem: { chapterId } },
-      select: { problemId: true, isCorrect: true },
+      select: {
+        problemId: true,
+        isCorrect: true,
+        problem: { select: { chapterId: true, problemType: true } },
+        annotation: { select: { annotationType: true } },
+      },
     }),
-    selectNextProblem({ studentId, chapterId }),
   ])
+
+  // Re-use the already-fetched data — no extra DB queries inside selectNextProblem
+  const nextProblem = await selectNextProblem(
+    { studentId, chapterId },
+    {
+      problems: allProblems.map((p) => ({
+        id: p.id,
+        problemType: p.problemType,
+        isActive: true,
+      })),
+      interactions,
+    },
+  )
 
   const attemptedIds = new Set(interactions.map((i) => i.problemId))
   const completedIds = new Set(

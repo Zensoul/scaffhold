@@ -1,7 +1,27 @@
 import { prisma } from '@/lib/db/prisma'
 
-
 const MIN_SAMPLES_TO_TRUST = 2
+
+// Types for pre-fetched data that callers can pass in to avoid duplicate
+// DB queries. Both fields are optional — if omitted, the function fetches
+// them itself (backwards-compatible for callers that don't have the data).
+type ProblemStub = {
+  id: string
+  problemType: string
+  isActive: boolean
+}
+
+type InteractionStub = {
+  problemId: string
+  isCorrect: boolean | null
+  problem: { chapterId: string; problemType: string }
+  annotation: { annotationType: string } | null
+}
+
+type Prefetched = {
+  problems?: ProblemStub[]
+  interactions?: InteractionStub[]
+}
 
 // Adaptive sequencing: decides which problem a student sees next, based
 // on real evidence of where they struggle — not just "first in chapter."
@@ -18,26 +38,34 @@ const MIN_SAMPLES_TO_TRUST = 2
 //      miss-rate as a tiebreaker.
 //   4. If no signal is trustworthy, fall back to the first problem —
 //      the honest floor when there isn't enough data yet.
-export async function selectNextProblem(params: {
-  studentId: string
-  chapterId: string
-}): Promise<{ problemId: string; reason: string } | null> {
+export async function selectNextProblem(
+  params: { studentId: string; chapterId: string },
+  prefetched?: Prefetched,
+): Promise<{ problemId: string; reason: string } | null> {
   const { studentId, chapterId } = params
 
-  const allProblems = await prisma.problem.findMany({
-    where: { chapterId, isActive: true },
-    orderBy: { createdAt: 'asc' },
-  })
+  // Use pre-fetched problems if provided, otherwise query DB
+  const allProblems =
+    prefetched?.problems ??
+    (await prisma.problem.findMany({
+      where: { chapterId, isActive: true },
+      orderBy: { createdAt: 'asc' },
+    }))
 
   if (allProblems.length === 0) return null
 
-  const interactions = await prisma.sessionInteraction.findMany({
-    where: {
-      studentId,
-      problem: { chapterId },
-    },
-    include: { problem: true, annotation: true },
-  })
+  // Use pre-fetched interactions if provided, otherwise query DB.
+  // Callers that already fetched interactions for this studentId+chapterId
+  // should pass them in to avoid the extra round-trip.
+  const interactions =
+    prefetched?.interactions ??
+    (await prisma.sessionInteraction.findMany({
+      where: {
+        studentId,
+        problem: { chapterId },
+      },
+      include: { problem: true, annotation: true },
+    }))
 
   const attemptedProblemIds = new Set(interactions.map((i) => i.problemId))
   const unattempted = allProblems.filter((p) => !attemptedProblemIds.has(p.id))
