@@ -14,10 +14,16 @@
 
 import { PrismaClient, FadeAnnotationType, ScaffoldingReason } from '@prisma/client'
 
+// Mode 2 now only ever fades/grades 'unknown' annotations -- 'given' and
+// 'implied_given' are always shown, never hidden, never submitted (see
+// FADEABLE_TYPES in the mode2 GET route). Their weights are zeroed so the
+// composite is purely a function of 'unknown' performance; keeping the
+// old 0.3/0.2 split here would silently cap every student's composite at
+// 0.5 forever, since those sub-scores could never be earned again.
 const COMPOSITE_WEIGHTS: Record<FadeAnnotationType, number> = {
-  unknown: 0.5,
-  implied_given: 0.3,
-  given: 0.2,
+  unknown: 1.0,
+  implied_given: 0,
+  given: 0,
 }
 
 const CORRECT_STEP = 0.05

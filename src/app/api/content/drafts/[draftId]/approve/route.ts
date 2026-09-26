@@ -74,6 +74,7 @@ export async function POST(
     const problem = await tx.problem.create({
       data: {
         chapterId: draft.chapterId,
+        subtopicId: draft.subtopicId,
         source: 'NCERT',
         rawText: draft.rawText,
         unknownAnnotation: finalUnknown,

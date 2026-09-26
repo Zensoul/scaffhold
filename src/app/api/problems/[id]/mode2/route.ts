@@ -6,8 +6,14 @@ import { checkSessionGuard } from '@/lib/session/session-guard'
 import { generateSessionEndStatement } from '@/lib/ai/session-end-statement'
 import { getFadeStepForStudent } from '@/lib/scaffolding/fade-logic'
 import { requireConsent, ConsentError } from '@/lib/compliance/consent-gate'
+import { checkRateLimit } from '@/lib/rate-limit'
 
-const FADEABLE_TYPES = ['given', 'implied_given', 'unknown'] as const
+// Only 'unknown' annotations are ever hidden/graded. A 'given' is
+// handed to the student, not something to derive -- fading it out and
+// asking for the exact restated prose back turns a fact into a
+// phrasing-guessing game, and 'given'/'implied_given' text is now
+// always shown alongside 'concept_anchor' instead.
+const FADEABLE_TYPES = ['unknown'] as const
 
 export async function GET(
   request: NextRequest,
@@ -22,19 +28,20 @@ export async function GET(
 
   const studentId = await getCurrentStudentId()
 
-  // requireConsent and problem.findUnique don't depend on each other's
-  // results, so running them concurrently saves one full round-trip of
-  // latency versus awaiting them one after another. KNOWN LIMITATION:
-  // each remaining query still pays significant per-round-trip latency
-  // (~1.5s observed) due to database region distance (Supabase project
-  // is in ap-southeast-2/Sydney) — this is a genuine infrastructure
-  // issue, not something code-level parallelization fully solves.
-  // Deliberately deferred: migrating regions is the real fix, tracked
-  // as a known follow-up rather than addressed tonight.
+  // Rate limit: this route calls rephraseHint (an LLM call) on retries
+  // after a miss, so bound how often one student can hit it.
+  const rateLimit = checkRateLimit(`mode2-get:${studentId}`, 60, 60_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests — please slow down and try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)) } }
+    )
+  }
+
   const consentPromise = requireConsent(studentId)
   const problemPromise = prisma.problem.findUnique({
     where: { id },
-    include: { annotations: { orderBy: { sequenceOrder: 'asc' } } },
+    include: { annotations: { orderBy: { sequenceOrder: 'asc' } }, diagram: { include: { stages: { orderBy: { stageIndex: 'asc' } } } } },
   })
 
   let problem: Awaited<typeof problemPromise>
@@ -139,9 +146,15 @@ export async function GET(
         id: problem.id,
         rawText: problem.rawText,
         concreteRestatement: problem.concreteRestatement,
+        givens: problem.givens,
+        problemType: problem.problemType,
       },
       chapterId: problem.chapterId,
       annotations: problem.annotations,
+      diagramUrl: problem.diagram?.status === 'approved' ? problem.diagram.videoUrl : null,
+      diagramStages: problem.diagram?.status === 'approved' && problem.diagram.stages.length > 0
+        ? problem.diagram.stages.map(s => ({ stageIndex: s.stageIndex, videoUrl: s.videoUrl, label: s.label }))
+        : null,
     })
   }
 
@@ -183,6 +196,7 @@ export async function GET(
       concreteRestatement: problem.concreteRestatement,
       problemType: problem.problemType,
       difficultyTier: problem.difficultyTier,
+      givens: problem.givens,
     },
     visibleAnnotations: visible,
     hiddenAnnotation: {
@@ -191,11 +205,16 @@ export async function GET(
       sequenceOrder: nextToAnswer.sequenceOrder,
       hintText,
       hintWasRephrased,
+      label: nextToAnswer.label ?? null,
     },
     fadeProgress: {
       totalHidden: hiddenSet.length,
       answeredSoFar: answeredCorrectlyIds.size,
       currentLevel,
     },
+    diagramUrl: problem.diagram?.status === 'approved' ? problem.diagram.videoUrl : null,
+    diagramStages: problem.diagram?.status === 'approved' && problem.diagram.stages.length > 0
+      ? problem.diagram.stages.map(s => ({ stageIndex: s.stageIndex, videoUrl: s.videoUrl, label: s.label }))
+      : null,
   })
 }

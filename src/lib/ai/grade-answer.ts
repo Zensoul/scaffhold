@@ -5,17 +5,38 @@ import { AiCallType } from '@prisma/client'
 const openai = new OpenAI()
 
 const MODEL = 'gpt-4o-mini'
-const PROMPT_VERSION = 'grade-answer-v1'
+const PROMPT_VERSION = 'grade-answer-v2'
 
 function exactMatch(studentResponse: string, correctText: string): boolean {
   const normalize = (s: string) => s.trim().toLowerCase()
   return normalize(studentResponse) === normalize(correctText)
 }
 
+// When correctText is a paragraph-style worked solution (e.g. contains
+// "Step 1:", multiple "=" signs, or is very long), the student's short
+// numeric answer should be compared against only the FINAL numeric result,
+// not the whole worked explanation. This extracts that final value so the
+// grader doesn't penalise a correct numeric answer for not matching prose.
+function extractFinalAnswer(text: string): string {
+  const looksLikeParagraph =
+    /step\s*\d/i.test(text) ||
+    (text.match(/=/g) || []).length >= 3 ||
+    text.length > 120
+
+  if (!looksLikeParagraph) return text
+
+  // Prefer the last numeric+unit token (e.g. "231 cm²", "220/7 cm")
+  const numericPattern = /[\d/]+\.?\d*\s*(?:cm²|cm|m²|m|km|°|rad|sq\s*\w+)/gi
+  const matches = text.match(numericPattern)
+  if (matches && matches.length > 0) return matches[matches.length - 1].trim()
+
+  // Fall back to last sentence
+  const sentences = text.split(/[.;]/).map((s) => s.trim()).filter(Boolean)
+  return sentences[sentences.length - 1] || text
+}
+
 // Structured-output grading: the model returns ONLY a fixed JSON shape,
-// enforced via response_format, never freeform prose to parse. This
-// mirrors the architecture principle that a schema violation should be
-// rejected/retried, never silently coerced.
+// enforced via response_format, never freeform prose to parse.
 //
 // Deliberately conservative: a "low" confidence verdict is treated as
 // NOT correct regardless of what isCorrect says, falling back to exact
@@ -37,6 +58,14 @@ export async function gradeAnswer(params: {
     return { isCorrect: true, usedLLM: false }
   }
 
+  // Also try exact match against just the final answer when correctText
+  // is a long worked solution — avoids needless LLM calls for correct
+  // short answers like "231 cm²" when correctText is a full paragraph.
+  const finalAnswer = extractFinalAnswer(correctText)
+  if (finalAnswer !== correctText && exactMatch(studentResponse, finalAnswer)) {
+    return { isCorrect: true, usedLLM: false }
+  }
+
   const startedAt = Date.now()
   let responseText: string | null = null
   let inputTokens: number | undefined
@@ -54,18 +83,20 @@ export async function gradeAnswer(params: {
           role: 'system',
           content:
             'You grade whether a 10th-grade student\'s short answer means the same thing as the correct answer, ' +
-            'for a math/physics problem-decoding exercise. Judge MEANING, not exact wording — ' +
-            'e.g. "the train\'s distance" and "Total distance = 360 km" do NOT mean the same thing (one names the ' +
-            'wrong quantity), but "distance is 360km" and "Total distance = 360 km" DO mean the same thing. ' +
-            'Be strict: only mark correct if the core quantity/relationship/concept genuinely matches. ' +
+            'for a math/physics problem-decoding exercise. Judge MEANING, not exact wording. Rules:\n' +
+            '1. Numeric values within 0.1 of each other AND the same unit are correct ' +
+            '   (e.g. "31.42 cm" vs "31.43 cm" → correct; "31.42 cm²" vs "31.43 cm" → WRONG — different units).\n' +
+            '2. cm and cm² are DIFFERENT units — never treat them as the same.\n' +
+            '3. A fraction and its decimal equivalent are the same (e.g. "220/7 cm" and "31.43 cm" → correct).\n' +
+            '4. Only mark correct if the core quantity genuinely matches. ' +
+            'Be strict on units. ' +
             'Respond ONLY with JSON: {"isCorrect": boolean, "confidence": "high" | "low"}. ' +
-            'Use "low" confidence whenever the answer is ambiguous, partially right, or you are unsure — ' +
-            'do not guess generously.',
+            'Use "low" confidence whenever the answer is ambiguous, partially right, or you are unsure.',
         },
         {
           role: 'user',
           content:
-            `Correct answer: "${correctText}"\n` +
+            `Correct answer: "${finalAnswer}"\n` +
             `Student's answer: "${studentResponse}"\n\n` +
             `Do these mean the same thing?`,
         },

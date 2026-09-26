@@ -1,35 +1,212 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens for a clean modern SaaS look (Linear/Notion/Khan-Academy
+ * register): neutral grayscale base, a single confident indigo accent,
+ * subtle borders, calm surfaces. One committed light theme for now --
+ * dark mode tokens are present but not activated anywhere in the app yet
+ * (see the .dark class-based variant above); flipping it on later is a
+ * deliberate follow-up, not an accident of the OS color-scheme media query.
+ */
 :root {
-  --background: #f5f5f5;
-  --foreground: #171717;
+  --radius: 0.625rem;
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+
+  /* Indigo accent -- confident, not childish; reads well for both a
+     teacher tool and a student product. */
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.98 0.005 265);
+
+  --success: oklch(0.6 0.14 155);
+  --success-foreground: oklch(0.98 0.005 155);
+
+  --warning: oklch(0.75 0.15 80);
+  --warning-foreground: oklch(0.2 0.02 80);
+
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+
+  /* Per-role accent tints, used sparingly (a badge, an active nav item) so
+     each portal feels distinct without needing three separate palettes. */
+  --role-student: oklch(0.55 0.18 265);
+  --role-teacher: oklch(0.55 0.14 200);
+  --role-parent: oklch(0.6 0.15 145);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.98 0.005 25);
+  --success: oklch(0.65 0.14 155);
+  --success-foreground: oklch(0.145 0.02 155);
+  --warning: oklch(0.78 0.15 80);
+  --warning-foreground: oklch(0.2 0.02 80);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-role-student: var(--role-student);
+  --color-role-teacher: var(--role-teacher);
+  --color-role-parent: var(--role-parent);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Deliberately NO @media (prefers-color-scheme: dark) block.
-   This product commits to one consistent light theme for now — every
-   page built so far (Mode 1/2/3, login, register, home) assumes a
-   light background with dark text, and was written with inline styles
-   that override body's defaults on a per-page basis. Without this
-   removal, a viewer's OS/browser dark-mode setting silently flips
-   --background to near-black behind every page, which is the root
-   cause of the white-card-on-dark-void rendering bugs seen throughout
-   today's testing. A deliberate dark-mode-aware redesign is a real,
-   separate design decision to make later — not something to half-solve
-   by accident via a leftover create-next-app default. */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html, body {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  }
 
-html, body {
-  height: 100%;
-}
+  /* Accessibility/mobile baseline for raw <button> elements that
+     predate the shared <Button> component (Mode 1/2/3 practice pages
+     use inline styles rather than the component library). This gives
+     every button a real touch target and a visible keyboard focus
+     ring without having to rewrite each inline style object -- inline
+     `style` attributes on those buttons only set color/padding/etc,
+     so these rules fill the gaps rather than fighting them. */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Same rationale as the button rules above -- Mode 1/2/3 use raw
+     <input>/<textarea> elements for free-text answers. */
+  input,
+  textarea {
+    min-height: 44px;
+  }
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
+  html {
+    @apply font-sans;
+  }
 }

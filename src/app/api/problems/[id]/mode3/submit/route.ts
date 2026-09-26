@@ -4,6 +4,8 @@ import { InteractionType, ScaffoldingReason } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 import { gradeOpenTextAnswer } from '@/lib/ai/grade-open-text'
 import { moderateStudentText, recordNotificationOwed } from '@/lib/safety/content-moderation'
+import { assertOwnsSession, SessionOwnershipError } from '@/lib/session/assert-owns-session'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 
 const LEVEL_DELTA_CORRECT = 0.08
@@ -31,8 +33,27 @@ export async function POST(
 
   const studentId = await getCurrentStudentId()
 
-  const session = await prisma.session.findUnique({ where: { id: sessionId } })
-  if (!session || session.endedAt) {
+  // Rate limit: caps AI grading calls per student to control cost/abuse.
+  const rateLimit = checkRateLimit(`grade:${studentId}`, 30, 60_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests — please slow down and try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)) } }
+    )
+  }
+
+  // IDOR guard: same class of bug as mode2/submit -- see that file's
+  // comment. Caught in tonight's security audit.
+  let session
+  try {
+    session = await assertOwnsSession(sessionId, studentId)
+  } catch (err) {
+    if (err instanceof SessionOwnershipError) {
+      return NextResponse.json({ error: 'Session is not active — start a new one' }, { status: 409 })
+    }
+    throw err
+  }
+  if (session.endedAt) {
     return NextResponse.json({ error: 'Session is not active — start a new one' }, { status: 409 })
   }
 

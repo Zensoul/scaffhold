@@ -37,18 +37,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ session: existing, resumed: true })
   }
 
-  const scaffoldingLevel = await prisma.scaffoldingLevel.findUnique({
+  // Same fix as /api/sessions/start-and-redirect: a first-time student
+  // (or a reset one) has no ScaffoldingLevel row yet, and this used to
+  // 422 rather than create one. Upsert with schema defaults instead.
+  const scaffoldingLevel = await prisma.scaffoldingLevel.upsert({
     where: {
       studentId_chapterId: { studentId, chapterId },
     },
+    create: { studentId, chapterId },
+    update: {},
   })
-
-  if (!scaffoldingLevel) {
-    return NextResponse.json(
-      { error: 'No scaffolding level record for this student/chapter — seed one first' },
-      { status: 422 }
-    )
-  }
 
   // forceNew explicitly means "the student chose to start over after a
   // session ended" (timeout, or the guard already closed it out). Close

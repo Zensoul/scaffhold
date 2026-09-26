@@ -33,6 +33,7 @@ model User {
   observedStudents       TeacherObservation[] @relation("ObservedStudents")
   reviewedProblems       Problem[]
   reviewedDrafts         ProblemDraft[]
+  reviewedDiagrams       ProblemDiagram[]
   parentSummaries        ParentSummary[]      @relation("ParentSummaries")
   studentSummaries       ParentSummary[]      @relation("StudentParentSummaries")
   chapterAssignmentsMade ChapterAssignment[]  @relation("ChapterAssigner")
@@ -206,9 +207,26 @@ model Chapter {
   scaffoldingHistory ScaffoldingHistory[]
   sessions           Session[]
   chapterAssignments ChapterAssignment[]
+  subtopics          Subtopic[]
 
   @@unique([subjectId, sequenceNumber])
   @@map("chapters")
+}
+
+model Subtopic {
+  id             String   @id @default(uuid())
+  chapterId      String
+  name           String
+  sequenceNumber Int
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  chapter       Chapter        @relation(fields: [chapterId], references: [id])
+  problems      Problem[]
+  problemDrafts ProblemDraft[]
+
+  @@unique([chapterId, sequenceNumber])
+  @@map("subtopics")
 }
 
 model ChapterAssignment {
@@ -229,6 +247,7 @@ model ChapterAssignment {
 model Problem {
   id                  String    @id @default(uuid())
   chapterId           String
+  subtopicId          String?
   source              String    @default("NCERT")
   sourceReference     String?
   rawText             String
@@ -250,13 +269,68 @@ model Problem {
   annotations         ProblemAnnotation[]
   sessionInteractions SessionInteraction[]
   sourceDraft         ProblemDraft?
+  subtopic            Subtopic?            @relation(fields: [subtopicId], references: [id])
+  diagram             ProblemDiagram?
+  guidedSolve         GuidedSolveProblem?
 
   @@map("problems")
 }
 
+// A single generated visual (Manim-rendered video/gif) explaining a
+// Problem, used for visually-dependent chapters (optics, circles,
+// mirrors, triangles) where text alone is a real barrier for a
+// below-average or simple-English-only student. Kept as its own model
+// rather than fields on Problem because it has its own
+// generate -> review -> publish lifecycle, mirroring ProblemDraft's
+// pattern rather than reusing it directly (the artifact here is a
+// rendered video file plus the source scene code that produced it,
+// not annotation text).
+model ProblemDiagram {
+  id             String        @id @default(uuid())
+  problemId      String        @unique
+  sceneCode      String        // The Manim Python scene source that generated this render, kept for re-render/audit.
+  promptVersion  String
+  videoUrl       String?       // Set once rendered and uploaded to storage; null while pending render.
+  status         DiagramStatus @default(pending_render)
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  reviewNotes    String?
+  renderErrorMsg String?       // Populated when the Manim render itself fails, distinct from a content/review rejection.
+  createdAt      DateTime      @default(now())
+
+  problem  Problem @relation(fields: [problemId], references: [id])
+  reviewer User?   @relation(fields: [reviewedBy], references: [id])
+  stages   DiagramStage[]
+
+  @@map("problem_diagrams")
+}
+
+enum DiagramStatus {
+  pending_render
+  pending_review
+  approved
+  rejected
+  render_failed
+}
+
+model DiagramStage {
+  id         String  @id @default(uuid())
+  diagramId  String
+  stageIndex Int
+  videoUrl   String?
+  label      String
+
+  diagram ProblemDiagram @relation(fields: [diagramId], references: [id])
+
+  @@unique([diagramId, stageIndex])
+  @@map("diagram_stages")
+}
+
+
 model ProblemDraft {
   id                  String      @id @default(uuid())
   chapterId           String
+  subtopicId          String?
   rawText             String
   unknownAnnotation   String?
   concreteRestatement String?
@@ -274,9 +348,10 @@ model ProblemDraft {
   publishedProblemId  String?     @unique
   createdAt           DateTime    @default(now())
 
-  chapter          Chapter  @relation(fields: [chapterId], references: [id])
-  reviewer         User?    @relation(fields: [reviewedBy], references: [id])
-  publishedProblem Problem? @relation(fields: [publishedProblemId], references: [id])
+  chapter          Chapter   @relation(fields: [chapterId], references: [id])
+  reviewer         User?     @relation(fields: [reviewedBy], references: [id])
+  publishedProblem Problem?  @relation(fields: [publishedProblemId], references: [id])
+  Subtopic         Subtopic? @relation(fields: [subtopicId], references: [id])
 
   @@map("problem_drafts")
 }
@@ -294,6 +369,7 @@ model ProblemAnnotation {
   annotationType AnnotationType
   annotationText String
   hintText       String
+  label          String?
   sequenceOrder  Int
   createdAt      DateTime       @default(now())
 
@@ -331,7 +407,7 @@ model ScaffoldingLevel {
 
   student StudentProfile           @relation(fields: [studentId], references: [id])
   chapter Chapter                  @relation(fields: [chapterId], references: [id])
-  byType  ScaffoldingLevelByType[] // <-- ADD THIS LINE
+  byType  ScaffoldingLevelByType[]
 
   @@unique([studentId, chapterId])
   @@map("scaffolding_levels")
@@ -531,4 +607,89 @@ enum ObservationTag {
   engagement_issue
   ready_to_advance
   needs_intervention
+}
+
+// ─── Guided Solve (Path B — adaptive tutor for circle-segment chapter) ────────
+// Each Problem can optionally have a GuidedSolveProblem record that breaks it
+// into typed steps (concept → substitution → computation). The student works
+// through each step with MCQ or numeric input; three wrong answers at a
+// computation step surfaces a worked example of a simpler problem.
+
+enum StepType {
+  concept      // MCQ — which formula applies?
+  substitution // MCQ — what values go into the formula?
+  computation  // Numeric — calculate the result
+}
+
+enum InputType {
+  mcq
+  numeric
+}
+
+model GuidedSolveProblem {
+  id        String      @id @default(uuid())
+  problemId String      @unique
+  problem   Problem     @relation(fields: [problemId], references: [id])
+  steps     SolveStep[]
+  createdAt DateTime    @default(now())
+
+  @@map("guided_solve_problems")
+}
+
+model SolveStep {
+  id                    String             @id @default(uuid())
+  guidedSolveProblemId  String
+  guidedSolveProblem    GuidedSolveProblem @relation(fields: [guidedSolveProblemId], references: [id])
+  sequenceOrder         Int
+  stepType              StepType
+  stepLabel             String             // e.g. "Step 1 of 7 — Sector Area Formula"
+  prompt                String             // The question shown to the student
+  inputType             InputType
+  correctAnswer         String             // For numeric: decimal string; for MCQ: option text
+  tolerance             Float?             // Only used when inputType = numeric (e.g. 0.01)
+  hintText              String             // Contextual hint — shown after 1st wrong answer
+  hintText2             String?            // Procedural hint — shown after 2nd wrong answer
+  hintText3             String?            // Bottom-out hint — shown after 3rd wrong answer
+  errorFeedback         String             // Shown immediately on a wrong answer
+  formulaCard           String?            // Always-visible formula reference on left panel
+  svgStage              Int                // Which SVG stage to show for this step (0-7)
+  workedExampleText     String?            // Full worked example shown after 3rd fail
+  workedExampleSvgStage Int?               // SVG stage for the worked example panel
+  selfExplainPrompt     String?            // Reflection prompt shown after worked example
+  selfExplainAnswer     String?            // Model answer for self-explanation
+  followUpPrompt        String?            // Follow-up question shown if student rates Somewhat/No
+  followUpAnswer        String?            // Correct answer for follow-up (numeric or MCQ text)
+  followUpInputType     InputType?         // 'numeric' or 'mcq'
+  followUpTolerance     Float?             // Tolerance for numeric follow-up
+  options               SolveStepOption[]
+  attempts              SolveAttempt[]
+
+  @@unique([guidedSolveProblemId, sequenceOrder])
+  @@map("solve_steps")
+}
+
+model SolveStepOption {
+  id         String    @id @default(uuid())
+  stepId     String
+  step       SolveStep @relation(fields: [stepId], references: [id])
+  optionText String
+  isCorrect  Boolean
+  orderIndex Int
+
+  @@map("solve_step_options")
+}
+
+model SolveAttempt {
+  id            String    @id @default(uuid())
+  stepId        String
+  step          SolveStep @relation(fields: [stepId], references: [id])
+  studentId     String
+  sessionId     String
+  studentAnswer String
+  isCorrect     Boolean
+  attemptNumber Int
+  createdAt     DateTime  @default(now())
+
+  @@index([studentId, stepId, createdAt])
+  @@map("solve_attempts")
 }

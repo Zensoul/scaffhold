@@ -1,13 +1,23 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { ContentPage } from '@/components/shared/page-layout'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
 
 type Student = {
   studentProfileId: string
   fullName: string
   grade: number
   board: string
+  chaptersAssigned: number
+  chaptersStarted: number
+  avgMasteryPct: number
+  problemsAttempted: number
+  problemsClean: number
 }
 
 type ChapterRow = {
@@ -28,7 +38,45 @@ type FoundStudent = {
   board: string
 }
 
+type PerStudent = {
+  studentName: string
+  attempts: number
+  solved: boolean
+  firstAttemptCorrect: boolean
+}
+
+type StepStat = {
+  stepId: string
+  stepLabel: string
+  sequenceOrder: number
+  problemId: string
+  problemTitle: string
+  uniqueStudents: number
+  avgAttempts: number
+  failRate: number
+  perStudent: PerStudent[]
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/)
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase()
+}
+
+function masteryTone(pct: number): 'success' | 'warning' | 'secondary' {
+  if (pct >= 70) return 'success'
+  if (pct >= 35) return 'warning'
+  return 'secondary'
+}
+
+function failTone(rate: number): string {
+  if (rate >= 60) return 'text-red-600 bg-red-50 border-red-200'
+  if (rate >= 30) return 'text-amber-700 bg-amber-50 border-amber-200'
+  return 'text-emerald-700 bg-emerald-50 border-emerald-200'
+}
+
 export default function TeacherDashboardPage() {
+  const [tab, setTab] = useState<'roster' | 'analytics'>('roster')
+
   const [students, setStudents] = useState<Student[] | null>(null)
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [chapters, setChapters] = useState<ChapterRow[] | null>(null)
@@ -43,6 +91,12 @@ export default function TeacherDashboardPage() {
   const [searching, setSearching] = useState(false)
   const [claiming, setClaiming] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
+  const [addStudentOpen, setAddStudentOpen] = useState(false)
+
+  // Analytics state
+  const [stepStats, setStepStats] = useState<StepStat[] | null>(null)
+  const [loadingStats, setLoadingStats] = useState(false)
+  const [expandedStepId, setExpandedStepId] = useState<string | null>(null)
 
   const loadStudents = useCallback(() => {
     setLoadingStudents(true)
@@ -81,6 +135,24 @@ export default function TeacherDashboardPage() {
     }
   }, [selectedStudentId, loadChapters])
 
+  const loadAnalytics = useCallback(() => {
+    setLoadingStats(true)
+    fetch('/api/teacher/guided-analytics')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load analytics')
+        return res.json()
+      })
+      .then((json: { steps: StepStat[] }) => setStepStats(json.steps))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoadingStats(false))
+  }, [])
+
+  useEffect(() => {
+    if (tab === 'analytics' && stepStats === null) {
+      loadAnalytics()
+    }
+  }, [tab, stepStats, loadAnalytics])
+
   async function handleToggle(chapter: ChapterRow) {
     if (!selectedStudentId) return
     setTogglingChapterId(chapter.chapterId)
@@ -99,6 +171,7 @@ export default function TeacherDashboardPage() {
         })
       }
       loadChapters(selectedStudentId)
+      loadStudents()
     } finally {
       setTogglingChapterId(null)
     }
@@ -141,6 +214,7 @@ export default function TeacherDashboardPage() {
 
       setSearchResult(undefined)
       setSearchEmail('')
+      setAddStudentOpen(false)
       loadStudents()
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Could not add this student.')
@@ -149,205 +223,343 @@ export default function TeacherDashboardPage() {
     }
   }
 
-  if (loadingStudents) return <ContentPage maxWidth={720}>Loading...</ContentPage>
-  if (error) return <ContentPage maxWidth={720}><span style={{ color: 'crimson' }}>{error}</span></ContentPage>
-  if (!students) return null
+  const selectedStudent = students?.find((s) => s.studentProfileId === selectedStudentId) ?? null
 
   return (
-    <ContentPage maxWidth={720}>
-      <h1 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem', color: '#111' }}>
-        Your students
-      </h1>
-
-      <section
-        style={{
-          border: '1px solid #ddd',
-          borderRadius: 8,
-          padding: '1rem',
-          marginBottom: '2rem',
-          background: '#fafafa',
-        }}
-      >
-        <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.75rem', color: '#111' }}>
-          Add a student
-        </h2>
-
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          <input
-            type="email"
-            value={searchEmail}
-            onChange={(e) => setSearchEmail(e.target.value)}
-            placeholder="Student's email"
-            required
-            style={{
-              flex: 1,
-              padding: '0.5rem',
-              fontSize: '0.95rem',
-              color: '#111',
-              background: '#fff',
-              border: '1px solid #ccc',
-              borderRadius: 4,
-            }}
-          />
-          <button
-            type="submit"
-            disabled={searching}
-            style={{
-              padding: '0.5rem 1rem',
-              color: '#fff',
-              background: '#2563eb',
-              border: 'none',
-              borderRadius: 4,
-              cursor: searching ? 'default' : 'pointer',
-              fontSize: '0.9rem',
-              opacity: searching ? 0.7 : 1,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {searching ? 'Searching...' : 'Search'}
-          </button>
-        </form>
-
-        {searchError && (
-          <p style={{ color: 'crimson', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{searchError}</p>
-        )}
-
-        {searchResult === null && (
-          <p style={{ color: '#666', fontSize: '0.85rem' }}>
-            No unassigned student found with that email. They may already have a teacher, or the
-            email might not match a student account.
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Teacher Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your roster and track guided-solve progress.
           </p>
-        )}
-
-        {searchResult && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.6rem 0.8rem',
-              background: '#fff',
-              border: '1px solid #ddd',
-              borderRadius: 6,
-            }}
+        </div>
+        {tab === 'roster' && (
+          <Button
+            variant={addStudentOpen ? 'secondary' : 'default'}
+            size="sm"
+            onClick={() => setAddStudentOpen((v) => !v)}
           >
-            <div>
-              <p style={{ color: '#111', fontWeight: 600, fontSize: '0.9rem' }}>
-                {searchResult.fullName}
-              </p>
-              <p style={{ color: '#666', fontSize: '0.8rem' }}>
-                Grade {searchResult.grade} ({searchResult.board}) — {searchResult.email}
-              </p>
-            </div>
-            <button
-              onClick={handleClaim}
-              disabled={claiming}
-              style={{
-                padding: '0.4rem 0.9rem',
-                color: '#fff',
-                background: '#16a34a',
-                border: 'none',
-                borderRadius: 4,
-                cursor: claiming ? 'default' : 'pointer',
-                fontSize: '0.85rem',
-                opacity: claiming ? 0.7 : 1,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {claiming ? 'Adding...' : 'Add to my roster'}
-            </button>
-          </div>
+            {addStudentOpen ? 'Close' : '+ Add student'}
+          </Button>
         )}
-      </section>
+      </div>
 
-      {students.length === 0 ? (
-        <p style={{ color: '#666' }}>
-          No students on your roster yet — search for one above by email to get started.
-        </p>
-      ) : (
+      {/* Tabs */}
+      <div className="mb-6 flex gap-1 rounded-lg bg-muted p-1 w-fit">
+        {(['roster', 'analytics'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+              tab === t
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t === 'roster' ? 'Students & Chapters' : 'Guided Solve Analytics'}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <Card className="mb-6 border-destructive/30 bg-destructive/5">
+          <CardContent className="py-4">
+            <p className="text-sm text-destructive">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ─── ROSTER TAB ─── */}
+      {tab === 'roster' && (
         <>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: '#444', marginBottom: '0.4rem' }}>
-              Assign chapters to
-            </label>
-            <select
-              value={selectedStudentId ?? ''}
-              onChange={(e) => setSelectedStudentId(e.target.value)}
-              style={{
-                padding: '0.5rem',
-                fontSize: '1rem',
-                color: '#111',
-                background: '#fff',
-                border: '1px solid #ccc',
-                borderRadius: 4,
-                minWidth: 260,
-              }}
-            >
-              {students.map((s) => (
-                <option key={s.studentProfileId} value={s.studentProfileId}>
-                  {s.fullName} — Grade {s.grade} ({s.board})
-                </option>
-              ))}
-            </select>
-          </div>
+          {addStudentOpen && (
+            <Card className="mb-6 bg-secondary/40">
+              <CardContent className="flex flex-col gap-3 py-5">
+                <p className="text-sm font-medium text-foreground">Add a student to your roster</p>
+                <form onSubmit={handleSearch} className="flex gap-2">
+                  <input
+                    type="email"
+                    value={searchEmail}
+                    onChange={(e) => setSearchEmail(e.target.value)}
+                    placeholder="Student's email"
+                    aria-label="Student's email address"
+                    required
+                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <Button type="submit" disabled={searching} size="sm">
+                    {searching ? 'Searching…' : 'Search'}
+                  </Button>
+                </form>
 
-          {loadingChapters && <p style={{ color: '#666' }}>Loading chapters...</p>}
+                {searchError && <p className="text-sm text-destructive">{searchError}</p>}
 
-          {!loadingChapters && chapters && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {chapters.map((c) => (
-                <div
-                  key={c.chapterId}
-                  style={{
-                    border: '1px solid #ddd',
-                    borderRadius: 8,
-                    padding: '0.85rem 1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: '#fff',
-                  }}
-                >
-                  <div>
-                    <p style={{ fontSize: '0.75rem', color: '#999', marginBottom: '0.15rem' }}>
-                      {c.subjectName}
-                    </p>
-                    <p style={{ fontWeight: 600, color: '#111' }}>{c.name}</p>
-                    {c.assigned && c.assignedByName && c.assignedAt && (
-                      <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>
-                        Assigned by {c.assignedByName} on{' '}
-                        {new Date(c.assignedAt).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
+                {searchResult === null && (
+                  <p className="text-sm text-muted-foreground">
+                    No unassigned student found with that email. They may already have a teacher, or
+                    the email doesn&apos;t match a student account.
+                  </p>
+                )}
+
+                {searchResult && (
+                  <div className="flex items-center justify-between rounded-md border bg-background px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{searchResult.fullName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Grade {searchResult.grade} ({searchResult.board}) — {searchResult.email}
                       </p>
-                    )}
+                    </div>
+                    <Button onClick={handleClaim} disabled={claiming} size="sm" variant="secondary">
+                      {claiming ? 'Adding…' : 'Add to my roster'}
+                    </Button>
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-                  <button
-                    onClick={() => handleToggle(c)}
-                    disabled={togglingChapterId === c.chapterId}
-                    style={{
-                      padding: '0.4rem 0.9rem',
-                      color: c.assigned ? '#111' : '#fff',
-                      background: c.assigned ? '#eee' : '#2563eb',
-                      border: c.assigned ? '1px solid #ccc' : 'none',
-                      borderRadius: 4,
-                      cursor: togglingChapterId === c.chapterId ? 'default' : 'pointer',
-                      fontSize: '0.9rem',
-                      opacity: togglingChapterId === c.chapterId ? 0.6 : 1,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {togglingChapterId === c.chapterId ? '...' : c.assigned ? 'Unassign' : 'Assign'}
-                  </button>
-                </div>
+          {loadingStudents && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-28 animate-pulse rounded-xl bg-muted" />
               ))}
             </div>
           )}
+
+          {!loadingStudents && students && students.length === 0 && (
+            <Card>
+              <CardContent className="flex flex-col items-center gap-2 py-14 text-center">
+                <p className="font-medium text-foreground">No students on your roster yet</p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Use &quot;Add student&quot; above to search by email and get started.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {!loadingStudents && students && students.length > 0 && (
+            <>
+              <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {students.map((s) => {
+                  const active = s.studentProfileId === selectedStudentId
+                  return (
+                    <button
+                      key={s.studentProfileId}
+                      onClick={() => setSelectedStudentId(s.studentProfileId)}
+                      className={`text-left rounded-xl border p-4 transition-colors ${
+                        active
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                          : 'border-border bg-card hover:bg-accent/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="size-9">
+                          <AvatarFallback className={active ? 'bg-primary/15 text-primary' : ''}>
+                            {initials(s.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-foreground">{s.fullName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Grade {s.grade} · {s.board}
+                          </p>
+                        </div>
+                        <Badge variant={masteryTone(s.avgMasteryPct)} className="shrink-0 text-[0.65rem]">
+                          {s.avgMasteryPct}% mastery
+                        </Badge>
+                      </div>
+
+                      <div className="mt-3">
+                        <Progress value={s.avgMasteryPct} className="h-1.5" />
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>
+                          {s.chaptersStarted}/{s.chaptersAssigned} chapters started
+                        </span>
+                        <span>
+                          {s.problemsClean}/{s.problemsAttempted} correct
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <Separator className="mb-6" />
+
+              {selectedStudent && (
+                <div className="mb-4">
+                  <h2 className="text-base font-semibold text-foreground">
+                    {selectedStudent.fullName}&apos;s chapters
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Grade {selectedStudent.grade} · {selectedStudent.board}
+                  </p>
+                </div>
+              )}
+
+              {loadingChapters && (
+                <div className="flex flex-col gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
+                  ))}
+                </div>
+              )}
+
+              {!loadingChapters && chapters && (
+                <div className="flex flex-col gap-2">
+                  {chapters.map((c) => (
+                    <Card key={c.chapterId} className="py-0">
+                      <CardContent className="flex items-center justify-between gap-4 px-4 py-3.5">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[0.65rem] font-normal text-muted-foreground">
+                              {c.subjectName}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 font-medium text-foreground">{c.name}</p>
+                          {c.assigned && c.assignedByName && c.assignedAt && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              Assigned by {c.assignedByName} on{' '}
+                              {new Date(c.assignedAt).toLocaleDateString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </p>
+                          )}
+                        </div>
+
+                        <Button
+                          onClick={() => handleToggle(c)}
+                          disabled={togglingChapterId === c.chapterId}
+                          size="sm"
+                          variant={c.assigned ? 'outline' : 'default'}
+                          className="shrink-0"
+                        >
+                          {togglingChapterId === c.chapterId ? '…' : c.assigned ? 'Unassign' : 'Assign'}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
-    </ContentPage>
+
+      {/* ─── ANALYTICS TAB ─── */}
+      {tab === 'analytics' && (
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Guided Solve — Step Analytics</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Steps sorted by fail rate (most trouble first). Click a row to see per-student breakdown.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={loadAnalytics} disabled={loadingStats}>
+              {loadingStats ? 'Loading…' : 'Refresh'}
+            </Button>
+          </div>
+
+          {loadingStats && (
+            <div className="flex flex-col gap-2">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-14 animate-pulse rounded-lg bg-muted" />
+              ))}
+            </div>
+          )}
+
+          {!loadingStats && stepStats && stepStats.length === 0 && (
+            <Card>
+              <CardContent className="flex flex-col items-center gap-2 py-14 text-center">
+                <p className="font-medium text-foreground">No guided-solve attempts yet</p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Data appears here as students work through guided solve problems.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {!loadingStats && stepStats && stepStats.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {stepStats.map((s) => {
+                const expanded = expandedStepId === s.stepId
+                return (
+                  <div key={s.stepId} className="rounded-xl border border-border overflow-hidden">
+                    <button
+                      onClick={() => setExpandedStepId(expanded ? null : s.stepId)}
+                      className="w-full text-left px-4 py-3 flex items-center gap-4 hover:bg-accent/30 transition-colors"
+                    >
+                      {/* Fail rate badge */}
+                      <span
+                        className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold ${failTone(s.failRate)}`}
+                      >
+                        {s.failRate}% fail
+                      </span>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{s.stepLabel}</p>
+                        <p className="text-xs text-muted-foreground truncate">{s.problemTitle}</p>
+                      </div>
+
+                      <div className="shrink-0 flex gap-4 text-xs text-muted-foreground">
+                        <span title="Average attempts per student">
+                          avg {s.avgAttempts} att.
+                        </span>
+                        <span title="Number of students who reached this step">
+                          {s.uniqueStudents} student{s.uniqueStudents !== 1 ? 's' : ''}
+                        </span>
+                        <span className="text-muted-foreground/50">{expanded ? '▲' : '▼'}</span>
+                      </div>
+                    </button>
+
+                    {expanded && (
+                      <div className="border-t border-border bg-muted/30 px-4 py-3">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-muted-foreground">
+                              <th className="text-left pb-2 font-medium">Student</th>
+                              <th className="text-center pb-2 font-medium">Attempts</th>
+                              <th className="text-center pb-2 font-medium">1st correct?</th>
+                              <th className="text-center pb-2 font-medium">Solved</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {s.perStudent.map((ps) => (
+                              <tr key={ps.studentName} className="border-t border-border/50">
+                                <td className="py-1.5 pr-4 font-medium text-foreground">{ps.studentName}</td>
+                                <td className="py-1.5 text-center">{ps.attempts}</td>
+                                <td className="py-1.5 text-center">
+                                  {ps.firstAttemptCorrect ? (
+                                    <span className="text-emerald-600">✓</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">✗</span>
+                                  )}
+                                </td>
+                                <td className="py-1.5 text-center">
+                                  {ps.solved ? (
+                                    <span className="text-emerald-600">✓</span>
+                                  ) : (
+                                    <span className="text-red-500">✗</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

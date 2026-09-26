@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 
 export function DataControls({
   studentProfileId,
@@ -33,32 +34,26 @@ export function DataControls({
   }
 
   if (deleted) {
-    return <p style={{ fontSize: '0.85rem', color: '#666' }}>Account deleted.</p>
+    return <p className="text-sm text-muted-foreground">Account deleted.</p>
   }
 
   return (
-    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+    <div className="mt-2 flex items-center gap-4">
       <a
         href={`/api/parent/students/${studentProfileId}/data`}
-        style={{ fontSize: '0.8rem', color: '#2563eb' }}
+        className="text-sm font-medium text-primary hover:underline"
       >
-        Download my child's data
+        Download my child&apos;s data
       </a>
-      <button
+      <Button
+        variant="link"
+        size="sm"
         onClick={handleDelete}
         disabled={deleting}
-        style={{
-          fontSize: '0.8rem',
-          color: '#b91c1c',
-          background: 'none',
-          border: 'none',
-          cursor: deleting ? 'default' : 'pointer',
-          padding: 0,
-          textDecoration: 'underline',
-        }}
+        className="h-auto p-0 text-sm text-destructive hover:no-underline hover:underline"
       >
-        {deleting ? 'Deleting...' : 'Delete account and all data'}
-      </button>
+        {deleting ? 'Deleting…' : 'Delete account and all data'}
+      </Button>
     </div>
   )
 }

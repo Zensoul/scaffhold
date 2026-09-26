@@ -5,6 +5,8 @@ import { getCurrentStudentId } from '@/lib/session/auth-stub'
 import { gradeAnswer } from '@/lib/ai/grade-answer'
 import { generateComparisonQuestion } from '@/lib/ai/comparison-question'
 import { updateScaffoldingLevel } from '@/lib/scaffolding/update-level'
+import { assertOwnsSession, SessionOwnershipError } from '@/lib/session/assert-owns-session'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(
   request: NextRequest,
@@ -28,8 +30,29 @@ export async function POST(
 
   const studentId = await getCurrentStudentId()
 
-  const session = await prisma.session.findUnique({ where: { id: sessionId } })
-  if (!session || session.endedAt) {
+  // Rate limit: caps AI grading calls per student to control cost/abuse.
+  const rateLimit = checkRateLimit(`grade:${studentId}`, 30, 60_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests — please slow down and try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimit.retryAfterMs / 1000)) } }
+    )
+  }
+
+  // IDOR guard: previously this fetched by sessionId alone, so any
+  // authenticated student could submit answers into another student's
+  // active session -- mutating their problemsAttempted count and
+  // scaffolding level. Caught in tonight's security audit.
+  let session
+  try {
+    session = await assertOwnsSession(sessionId, studentId)
+  } catch (err) {
+    if (err instanceof SessionOwnershipError) {
+      return NextResponse.json({ error: 'Session is not active — start a new one' }, { status: 409 })
+    }
+    throw err
+  }
+  if (session.endedAt) {
     return NextResponse.json({ error: 'Session is not active — start a new one' }, { status: 409 })
   }
 
@@ -55,7 +78,7 @@ export async function POST(
   // student's own words first, and only escalate to the structured
   // comparison-question recovery after a SECOND miss on the same piece.
   const priorMissesBeforeThisAttempt = await prisma.sessionInteraction.count({
-    where: { studentId, annotationId: annotation.id, isCorrect: false },
+    where: { studentId, sessionId, annotationId: annotation.id, isCorrect: false },
   })
 
   const { isCorrect: correct, usedLLM } = await gradeAnswer({
@@ -67,16 +90,22 @@ export async function POST(
     correctText: annotation.annotationText,
   })
 
-  const scaffoldingLevel = await prisma.scaffoldingLevel.findUnique({
+  // Upsert scaffolding level: create with sensible defaults if it doesn't
+  // exist yet (e.g. for chapters added after initial seed). This prevents
+  // a hard 422 that silently loops the UI back to the same question.
+  const scaffoldingLevel = await prisma.scaffoldingLevel.upsert({
     where: { studentId_chapterId: { studentId, chapterId: problem.chapterId } },
+    update: {},
+    create: {
+      studentId,
+      chapterId: problem.chapterId,
+      currentLevel: 0.1,
+      problemsAttempted: 0,
+      problemsClean: 0,
+      consecutiveClean: 0,
+      consecutiveFailures: 0,
+    },
   })
-
-  if (!scaffoldingLevel) {
-    return NextResponse.json(
-      { error: 'No scaffolding level record for this student/chapter — seed one first' },
-      { status: 422 }
-    )
-  }
 
   const levelBefore = scaffoldingLevel.currentLevel
 
@@ -96,15 +125,13 @@ export async function POST(
       })
     : null
 
-  // annotation.annotationType is 'unknown' | 'given' | 'implied_given' |
-  // 'concept_anchor' — Mode 2 only ever fades FADEABLE_TYPES (the first
-  // three; see the GET route), so concept_anchor should never reach this
-  // route in practice, but the guard keeps that invariant explicit
-  // rather than assumed, and keeps updateScaffoldingLevel's typed
-  // FadeAnnotationType parameter honest.
-  if (!['unknown', 'given', 'implied_given'].includes(annotation.annotationType)) {
+  // Only 'unknown' annotations are ever hidden by Mode 2's GET route
+  // now (FADEABLE_TYPES), so 'given', 'implied_given', and
+  // 'concept_anchor' should never reach this route in practice -- the
+  // guard keeps that invariant explicit rather than assumed.
+  if (annotation.annotationType !== 'unknown') {
     return NextResponse.json(
-      { error: 'concept_anchor annotations are never gradeable in Mode 2' },
+      { error: 'Only unknown annotations are gradeable in Mode 2' },
       { status: 500 }
     )
   }

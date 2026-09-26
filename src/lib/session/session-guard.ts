@@ -25,9 +25,15 @@ export async function checkSessionGuard(
 ): Promise<SessionGuardResult> {
   const session = await prisma.session.findUnique({ where: { id: sessionId } })
 
-  if (!session) {
-    // Session doesn't exist — treat as already ended; caller should
-    // require a fresh /session/start call.
+  // IDOR guard: a session that exists but belongs to a different
+  // student is treated identically to a nonexistent one -- the caller
+  // has no legitimate session here either way, and this function's
+  // only two outcomes (shouldEnd true/false) don't need a separate
+  // "forbidden" case to communicate that.
+  if (!session || session.studentId !== studentId) {
+    // Session doesn't exist, or doesn't belong to this student --
+    // treat as already ended; caller should require a fresh
+    // /session/start call.
     return { shouldEnd: true, reason: EndReason.timeout }
   }
 

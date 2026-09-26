@@ -35,16 +35,20 @@ export async function POST(request: NextRequest) {
   let session = existing
 
   if (!session) {
-    const scaffoldingLevel = await prisma.scaffoldingLevel.findUnique({
+    // A brand-new student (or, as we found via testing, a reset one)
+    // has no ScaffoldingLevel row yet -- this used to 422 here, which
+    // meant EVERY real student would hit an error on their very first
+    // "Start" click, since nobody has a ScaffoldingLevel before their
+    // first session. Upsert instead, matching the same pattern
+    // updateScaffoldingLevel already uses: a first-time student starts
+    // at the schema's own defaults (currentLevel 0), created lazily
+    // right here rather than requiring some other code path to have
+    // seeded it first.
+    const scaffoldingLevel = await prisma.scaffoldingLevel.upsert({
       where: { studentId_chapterId: { studentId, chapterId } },
+      create: { studentId, chapterId },
+      update: {},
     })
-
-    if (!scaffoldingLevel) {
-      return NextResponse.json(
-        { error: 'No scaffolding level record for this student/chapter' },
-        { status: 422 }
-      )
-    }
 
     session = await prisma.session.create({
       data: {

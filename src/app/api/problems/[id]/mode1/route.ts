@@ -33,12 +33,24 @@ export async function GET(
 
   const problem = await prisma.problem.findUnique({
     where: { id },
-    include: { annotations: { orderBy: { sequenceOrder: 'asc' } } },
+    include: { annotations: { orderBy: { sequenceOrder: 'asc' } }, diagram: { include: { stages: { orderBy: { stageIndex: 'asc' } } } } },
   })
 
   if (!problem || !problem.isActive) {
     return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
   }
+
+  // The 'unknown' annotation is the final answer text -- Mode 1 is a
+  // worked example that should teach the reasoning (givens, implied
+  // givens, the concept), not hand the student the answer to
+  // memorize/screenshot before they ever attempt it themselves in
+  // Mode 2. Every other annotation type is sent in full; the unknown
+  // annotation is sent with its text stripped, same shape as Mode 2's
+  // hiddenAnnotation, so the student sees that a piece is there and
+  // what kind it is, but has to actually solve it in Mode 2.
+  const annotations = problem.annotations.map((a) =>
+    a.annotationType === 'unknown' ? { ...a, annotationText: null } : a
+  )
 
   return NextResponse.json({
     problem: {
@@ -47,8 +59,13 @@ export async function GET(
       concreteRestatement: problem.concreteRestatement,
       problemType: problem.problemType,
       difficultyTier: problem.difficultyTier,
+      givens: problem.givens,
     },
-    annotations: problem.annotations,
+    annotations,
     chapterId: problem.chapterId,
+    diagramUrl: problem.diagram?.status === 'approved' ? problem.diagram.videoUrl : null,
+    diagramStages: problem.diagram?.status === 'approved' && problem.diagram.stages.length > 0
+      ? problem.diagram.stages.map(s => ({ stageIndex: s.stageIndex, videoUrl: s.videoUrl, label: s.label }))
+      : null,
   })
 }

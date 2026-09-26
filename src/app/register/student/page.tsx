@@ -81,7 +81,7 @@ function StudentRegisterForm() {
   if (loadError) {
     return (
       <CenteredPage>
-        <p style={{ color: 'crimson' }}>{loadError}</p>
+        <p style={{ color: 'var(--destructive)' }}>{loadError}</p>
         <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#666' }}>
           Ask your parent to send you a new invite link.
         </p>
@@ -144,7 +144,7 @@ function StudentRegisterForm() {
         </div>
 
         {submitError && (
-          <p style={{ color: 'crimson', fontSize: '0.85rem', marginBottom: '1rem' }}>{submitError}</p>
+          <p style={{ color: 'var(--destructive)', fontSize: '0.85rem', marginBottom: '1rem' }}>{submitError}</p>
         )}
 
         <button

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { EndReason } from '@prisma/client'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 import { generateSessionEndStatement } from '@/lib/ai/session-end-statement'
+import { assertOwnsSession, SessionOwnershipError } from '@/lib/session/assert-owns-session'
 
 
 export async function POST(
@@ -15,10 +16,19 @@ export async function POST(
 
   const studentId = await getCurrentStudentId()
 
-  const session = await prisma.session.findUnique({ where: { id: sessionId } })
-
-  if (!session) {
-    return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+  // IDOR guard: without this, any authenticated student could pass
+  // another student's sessionId and force-end their session, triggering
+  // an AI-generated closing statement and overwriting their
+  // scaffoldingLevelEnd/endReason -- a real data-integrity issue caught
+  // in tonight's security audit.
+  let session
+  try {
+    session = await assertOwnsSession(sessionId, studentId)
+  } catch (err) {
+    if (err instanceof SessionOwnershipError) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+    throw err
   }
 
   if (session.endedAt) {

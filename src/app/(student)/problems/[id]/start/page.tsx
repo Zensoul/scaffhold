@@ -5,6 +5,7 @@ import { getCurrentStudentId } from '@/lib/session/auth-stub'
 const MODE_3_THRESHOLD = 0.8
 
 // Central routing decision for "what should this student see next":
+// - Problem has a GuidedSolveProblem record → always use Guided Solve.
 // - No scaffolding history yet on this chapter → Mode 1 (worked example).
 //   A student's very first problem in a chapter shouldn't be a blind
 //   fade or an independent attempt; show them how it's done first.
@@ -32,9 +33,17 @@ export default async function ProblemRouterPage({
 
   const studentId = await getCurrentStudentId()
 
-  const problem = await prisma.problem.findUnique({ where: { id } })
+  const problem = await prisma.problem.findUnique({
+    where: { id },
+    include: { guidedSolve: { select: { id: true } } },
+  })
   if (!problem) {
     notFound()
+  }
+
+  // If this problem has a guided-solve sequence, always use it
+  if (problem.guidedSolve) {
+    redirect(`/problems/${id}/guided?sessionId=${sessionId}`)
   }
 
   const scaffoldingLevel = await prisma.scaffoldingLevel.findUnique({
