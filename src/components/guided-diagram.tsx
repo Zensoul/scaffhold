@@ -1,5 +1,5 @@
-import type { JSX } from 'react'
 'use client'
+import type { JSX } from 'react'
 
 /**
  * GuidedDiagram — SVG component for the circle-geometry guided solve mode.
