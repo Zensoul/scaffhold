@@ -585,8 +585,6 @@ const combinationStages: Record<number, (props: StageProps) => JSX.Element> = {
 // Stage 3 — reflected rays converge; image arrow formed; v/f labels
 // Stage 4 — formula bar: 1/v + 1/u = 1/f with values substituted
 
-const GOLD = '#F59E0B'
-const BLUE = '#3B82F6'
 const RED  = '#EF4444'
 const GREEN = '#10B981'
 const GRAY = '#6B7280'
