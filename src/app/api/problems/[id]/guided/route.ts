@@ -40,6 +40,7 @@ type GuidedStepResponse = {
   selfExplain: {
     prompt: string
     answer: string
+    followUp: { prompt: string; answer: string; inputType: string; tolerance: number } | null
   } | null
   // Adaptive error type — helps frontend show targeted nudge
   errorType: 'formula' | 'substitution' | 'arithmetic' | null
@@ -429,6 +430,14 @@ export async function POST(
         ? {
             prompt: step.selfExplainPrompt!,
             answer: step.selfExplainAnswer!,
+            followUp: step.followUpPrompt
+              ? {
+                  prompt: step.followUpPrompt,
+                  answer: step.followUpAnswer!,
+                  inputType: step.followUpInputType ?? 'numeric',
+                  tolerance: step.followUpTolerance ?? 0,
+                }
+              : null,
           }
         : null,
     attemptCount: newWrongCount,

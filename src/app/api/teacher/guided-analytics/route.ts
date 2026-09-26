@@ -26,7 +26,12 @@ export async function GET(request: Request) {
   // Fetch all attempts for these students, including step info
   const attempts = await prisma.solveAttempt.findMany({
     where: { studentId: { in: studentIds } },
-    include: {
+    select: {
+      id: true,
+      stepId: true,
+      studentId: true,
+      isCorrect: true,
+      createdAt: true,
       step: {
         select: {
           id: true,
@@ -35,7 +40,7 @@ export async function GET(request: Request) {
           guidedSolveProblem: {
             select: {
               problemId: true,
-              problem: { select: { title: true } },
+              problem: { select: { rawText: true } },
             },
           },
         },
@@ -88,7 +93,7 @@ export async function GET(request: Request) {
       stepLabel: step.stepLabel,
       sequenceOrder: step.sequenceOrder,
       problemId: step.guidedSolveProblem.problemId,
-      problemTitle: step.guidedSolveProblem.problem.title,
+      problemTitle: step.guidedSolveProblem.problem.rawText,
       uniqueStudents,
       avgAttempts,
       failRate,
