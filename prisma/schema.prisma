@@ -273,6 +273,7 @@ model Problem {
   diagram             ProblemDiagram?
   guidedSolve         GuidedSolveProblem?
 
+  @@index([chapterId])
   @@map("problems")
 }
 
@@ -453,6 +454,7 @@ model Session {
   teacherObservations TeacherObservation[]
   aiCalls             AiCall[]
 
+  @@index([studentId, startedAt])
   @@map("sessions")
 }
 
@@ -485,6 +487,7 @@ model SessionInteraction {
 
   @@index([sessionId, createdAt])
   @@index([studentId, createdAt])
+  @@index([studentId, problemId])
   @@map("session_interactions")
 }
 
