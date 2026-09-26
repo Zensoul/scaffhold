@@ -153,9 +153,10 @@ export default function GuidedPage() {
       const rawJson: GetResponse = await res.json()
       // Shuffle MCQ options (deterministic per step so re-fetch gives same order)
       let json = rawJson
-      if (rawJson.step?.options?.length) {
-        const seed = rawJson.step.prompt.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
-        const arr = [...rawJson.step.options]
+      if (!rawJson.problemComplete && rawJson.step?.options?.length) {
+        const narrowed = rawJson as Extract<GetResponse, { problemComplete: false }>
+        const seed = narrowed.step.prompt.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0)
+        const arr = [...narrowed.step.options]
         // Seeded Fisher-Yates — lcg avoids integer overflow
         let rng = seed
         for (let i = arr.length - 1; i > 0; i--) {
@@ -163,7 +164,7 @@ export default function GuidedPage() {
           const j = rng % (i + 1)
           ;[arr[i], arr[j]] = [arr[j], arr[i]]
         }
-        json = { ...rawJson, step: { ...rawJson.step, options: arr } }
+        json = { ...narrowed, step: { ...narrowed.step, options: arr } }
       }
       setData(json)
       if (!json.problemComplete) {
