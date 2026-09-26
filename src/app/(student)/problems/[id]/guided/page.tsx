@@ -38,6 +38,9 @@ type GuidedStep = {
 type ProblemInfo = {
   rawText: string
   concreteRestatement: string | null
+  givens: string[]
+  impliedGivens: string[]
+  unknownAnnotation: string
   diagramConfig: { r: number; theta: number; isMajorSegment?: boolean; problemType?: 'sector' | 'arc' | 'segment' | 'combination' }
 }
 
@@ -123,6 +126,11 @@ export default function GuidedPage() {
   const [followUpAnswer, setFollowUpAnswer] = useState<string>('')
   const [followUpResult, setFollowUpResult] = useState<'correct' | 'wrong' | null>(null)
 
+  // ── Comprehension phase — before any solve steps ─────────────────────────
+  // 'givens' → student reviews each given; 'unknown' → confirms what to find; 'solving' → normal steps
+  const [comprehensionPhase, setComprehensionPhase] = useState<'givens' | 'unknown' | 'solving'>('givens')
+  const [givenIndex, setGivenIndex] = useState(0)
+
   // Confidence gate — concept steps require student to self-assess before attempting
   const [confidenceGatePassed, setConfidenceGatePassed] = useState<boolean>(true)
   const [confidenceUnsure, setConfidenceUnsure] = useState<boolean>(false)
@@ -147,6 +155,8 @@ export default function GuidedPage() {
     setFollowUpResult(null)
     setConfidenceGatePassed(true)  // will be overridden after fetch for concept steps
     setConfidenceUnsure(false)
+    // Note: comprehension phase only resets on first load (givenIndex/comprehensionPhase
+    // are intentionally persistent so revisiting a step doesn't replay comprehension)
     try {
       const res = await fetch(`/api/problems/${problemId}/guided?sessionId=${sessionId}`)
       if (!res.ok) throw new Error(await res.text())
@@ -271,6 +281,113 @@ export default function GuidedPage() {
   }
 
   const step = data.step
+
+  // ── Comprehension phase ────────────────────────────────────────────────────
+  // Shown before any solve steps — helps student identify givens and unknown
+  const allGivens = [...(data.problem.givens ?? []), ...(data.problem.impliedGivens ?? [])]
+
+  if (comprehensionPhase !== 'solving') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4 py-10">
+        <div className="w-full max-w-xl space-y-6">
+
+          {/* Problem statement */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Problem</p>
+            <p className="text-sm text-gray-800 leading-relaxed">{data.problem.rawText}</p>
+            {data.problem.concreteRestatement && (
+              <p className="text-xs text-gray-500 italic mt-1">{data.problem.concreteRestatement}</p>
+            )}
+          </div>
+
+          {/* Phase: Givens */}
+          {comprehensionPhase === 'givens' && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-blue-600 text-lg">📋</span>
+                <h2 className="text-base font-semibold text-blue-900">What information do you have?</h2>
+              </div>
+              <p className="text-xs text-blue-600">
+                Read each piece of given information and confirm you understand it before moving on.
+              </p>
+
+              {/* Progress dots */}
+              <div className="flex gap-1.5">
+                {allGivens.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-5 h-1.5 rounded-full transition-colors ${
+                      i < givenIndex ? 'bg-blue-500' : i === givenIndex ? 'bg-blue-700' : 'bg-blue-200'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {allGivens.length > 0 ? (
+                <div className="rounded-lg border border-blue-300 bg-white px-4 py-4 space-y-3">
+                  <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide">
+                    Given {givenIndex + 1} of {allGivens.length}
+                  </p>
+                  <p className="text-sm text-gray-800 font-medium">{allGivens[givenIndex]}</p>
+                  <button
+                    onClick={() => {
+                      if (givenIndex < allGivens.length - 1) {
+                        setGivenIndex(i => i + 1)
+                      } else {
+                        setComprehensionPhase('unknown')
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 transition-colors"
+                  >
+                    {givenIndex < allGivens.length - 1 ? 'Got it — next' : 'I have all the information'}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setComprehensionPhase('unknown')}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2"
+                >
+                  Continue <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Phase: Unknown */}
+          {comprehensionPhase === 'unknown' && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-amber-600 text-lg">🎯</span>
+                <h2 className="text-base font-semibold text-amber-900">What do you need to find?</h2>
+              </div>
+              <p className="text-xs text-amber-600">
+                Before solving, be clear about what the question is asking for.
+              </p>
+              <div className="rounded-lg border border-amber-300 bg-white px-4 py-4 space-y-3">
+                <p className="text-sm text-gray-800 font-medium">{data.problem.unknownAnnotation}</p>
+                <button
+                  onClick={() => setComprehensionPhase('solving')}
+                  className="inline-flex items-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-4 py-2 transition-colors"
+                >
+                  I know what to find — let&#39;s solve
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Skip link */}
+          <button
+            onClick={() => { setComprehensionPhase('solving') }}
+            className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 block text-center"
+          >
+            Skip understanding check
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // Determine which worked example and self-explain to show
   // (from GET response for concept steps, from feedback for others)

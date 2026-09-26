@@ -107,7 +107,7 @@ export async function GET(
         orderBy: { sequenceOrder: 'asc' },
         include: { options: { orderBy: { orderIndex: 'asc' } } },
       },
-      problem: { select: { isActive: true, rawText: true, concreteRestatement: true, givens: true } },
+      problem: { select: { isActive: true, rawText: true, concreteRestatement: true, givens: true, impliedGivens: true, unknownAnnotation: true } },
     },
   })
 
@@ -155,6 +155,9 @@ export async function GET(
   const problemInfo = {
     rawText: guidedProblem.problem.rawText,
     concreteRestatement: guidedProblem.problem.concreteRestatement,
+    givens: guidedProblem.problem.givens as string[],
+    impliedGivens: (guidedProblem.problem.impliedGivens ?? []) as string[],
+    unknownAnnotation: guidedProblem.problem.unknownAnnotation,
     diagramConfig,
   }
 
