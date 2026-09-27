@@ -11,6 +11,14 @@ import { CheckCircle, XCircle, Lightbulb, BookOpen, ArrowRight, FileText, HelpCi
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type StepOption = { id: string; optionText: string; orderIndex: number }
+type PrerequisiteSupport = {
+  skill: string
+  explanation: string
+  easierExample: string
+  checkPrompt: string
+  checkAnswer: string
+  checkTolerance: number
+}
 
 type GuidedStep = {
   stepId: string
@@ -35,6 +43,7 @@ type GuidedStep = {
   answeredSoFar: number
   conceptVideoUrl: string | null
   socraticPrompt: string | null
+  prerequisiteSupport: PrerequisiteSupport | null
 }
 
 type ProblemInfo = {
@@ -62,6 +71,7 @@ type PostResponse =
       workedExample: { text: string; svgStage: number } | null
       selfExplain: { prompt: string; answer: string; followUp: { prompt: string; answer: string; inputType: string; tolerance: number } | null } | null
       attemptCount: number
+      prerequisiteSupport: PrerequisiteSupport | null
     }
 
 // ─── Step-type badge colours ──────────────────────────────────────────────────
@@ -402,6 +412,7 @@ export default function GuidedPage() {
     workedExample: { text: string; svgStage: number } | null
     selfExplain: { prompt: string; answer: string; followUp: { prompt: string; answer: string; inputType: string; tolerance: number } | null } | null
     attemptCount: number
+    prerequisiteSupport: PrerequisiteSupport | null
   } | null>(null)
 
   // Self-explain self-assessment state (Yes / Somewhat / No)
@@ -411,6 +422,8 @@ export default function GuidedPage() {
   const [selfExplainSubmitted, setSelfExplainSubmitted] = useState<boolean>(false)
   const [followUpAnswer, setFollowUpAnswer] = useState<string>('')
   const [followUpResult, setFollowUpResult] = useState<'correct' | 'wrong' | null>(null)
+  const [prerequisiteCheckAnswer, setPrerequisiteCheckAnswer] = useState('')
+  const [prerequisiteCheckResult, setPrerequisiteCheckResult] = useState<'correct' | 'wrong' | null>(null)
 
   // ── Comprehension phase — before any solve steps ─────────────────────────
   // 'givens' → student identifies each given; 'unknown' → identifies what to find; 'solving' → normal steps
@@ -431,6 +444,7 @@ export default function GuidedPage() {
   // Diagram stage — updated from step or worked example
   const [diagramStage, setDiagramStage] = useState(0)
   const [showWorkedExamplePanel, setShowWorkedExamplePanel] = useState(false)
+  const [showFirstHint, setShowFirstHint] = useState(false)
   const workedExampleRef = useRef<HTMLDivElement>(null)
   const [correctFlash, setCorrectFlash] = useState(false)
 
@@ -441,11 +455,14 @@ export default function GuidedPage() {
     setSelectedOption('')
     setNumericAnswer('')
     setShowWorkedExamplePanel(false)
+    setShowFirstHint(false)
     setSelfExplainResult(null)
     setSelfExplainText('')
     setSelfExplainSubmitted(false)
     setFollowUpAnswer('')
     setFollowUpResult(null)
+    setPrerequisiteCheckAnswer('')
+    setPrerequisiteCheckResult(null)
     setSocraticText('')
     setSocraticSubmitted(false)
     setShowVideoPanel(false)
@@ -526,9 +543,11 @@ export default function GuidedPage() {
           workedExample: json.workedExample,
           selfExplain: json.selfExplain,
           attemptCount: json.attemptCount,
+          prerequisiteSupport: json.prerequisiteSupport,
         })
         if (json.workedExample) {
           setDiagramStage(json.workedExample.svgStage)
+          setShowWorkedExamplePanel(!json.prerequisiteSupport)
         }
         setSelfExplainResult(null)
         setSelectedOption('')
@@ -539,6 +558,17 @@ export default function GuidedPage() {
     }
   }
 
+
+  function checkPrerequisiteAnswer() {
+    if (!activePrerequisiteSupport || !prerequisiteCheckAnswer.trim()) return
+    const rawAnswer = prerequisiteCheckAnswer.trim()
+    const numericPattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i
+    const studentNumber = numericPattern.test(rawAnswer) ? Number(rawAnswer) : NaN
+    const expectedNumber = Number(activePrerequisiteSupport.checkAnswer)
+    const isCorrect = Number.isFinite(studentNumber) && Number.isFinite(expectedNumber) &&
+      Math.abs(studentNumber - expectedNumber) <= activePrerequisiteSupport.checkTolerance
+    setPrerequisiteCheckResult(isCorrect ? 'correct' : 'wrong')
+  }
   // ── Self-explain check ─────────────────────────────────────────────────────
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -609,9 +639,10 @@ export default function GuidedPage() {
   // (from GET response for concept steps, from feedback for others)
   const activeWorkedExample = feedback?.workedExample ?? step.workedExample
   const activeSelfExplain = feedback?.selfExplain ?? step.selfExplain
+  const activePrerequisiteSupport = feedback?.prerequisiteSupport ?? step.prerequisiteSupport
 
   // Active hint levels — merge GET (persisted) with POST (fresh feedback)
-  const activeHint1 = feedback?.hintText ?? step.hintText
+  const activeHint1 = feedback?.hintText ?? (showFirstHint ? step.hintText : null)
   const activeHint2 = feedback?.hintText2 ?? step.hintText2
   const activeHint3 = feedback?.hintText3 ?? step.hintText3
 
@@ -796,6 +827,60 @@ export default function GuidedPage() {
             </div>
           )}
 
+          {activePrerequisiteSupport && (
+            <section className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-emerald-900">Let’s review one smaller skill first</p>
+                <Badge variant="outline" className="mt-2 border-emerald-300 text-emerald-800">
+                  {activePrerequisiteSupport.skill}
+                </Badge>
+              </div>
+              <p className="text-sm leading-relaxed text-emerald-900">
+                {activePrerequisiteSupport.explanation}
+              </p>
+              <div className="rounded-lg bg-white/80 px-3 py-3">
+                <p className="mb-1 text-xs font-semibold text-emerald-800">An easier example</p>
+                <p className="whitespace-pre-wrap text-sm text-emerald-950">
+                  {activePrerequisiteSupport.easierExample}
+                </p>
+              </div>
+              {prerequisiteCheckResult === null ? (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-emerald-950" htmlFor="prerequisite-check">
+                    {activePrerequisiteSupport.checkPrompt}
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      id="prerequisite-check"
+                      type="number"
+                      step="any"
+                      value={prerequisiteCheckAnswer}
+                      onChange={(event) => setPrerequisiteCheckAnswer(event.target.value)}
+                      onKeyDown={(event) => event.key === 'Enter' && checkPrerequisiteAnswer()}
+                      className="max-w-[180px] bg-white"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={!prerequisiteCheckAnswer.trim()}
+                      onClick={checkPrerequisiteAnswer}
+                    >
+                      Check this skill
+                    </Button>
+                  </div>
+                </div>
+              ) : prerequisiteCheckResult === 'correct' ? (
+                <p className="text-sm font-medium text-emerald-800">
+                  Nice — you got this quick check. Try the original step again when you’re ready.
+                </p>
+              ) : (
+                <p className="text-sm text-emerald-900">
+                  Not yet. The answer is <strong>{activePrerequisiteSupport.checkAnswer}</strong>. Review the easier example, then try the main step again.
+                </p>
+              )}
+            </section>
+          )}
           {/* ── Confidence gate — concept steps only ────────────────────── */}
           {!confidenceGatePassed && (
             <div className="rounded-xl border border-purple-200 bg-purple-50 px-5 py-5 space-y-4">
@@ -820,7 +905,7 @@ export default function GuidedPage() {
                     onClick={() => {
                       setConfidenceUnsure(true)
                       if (activeWorkedExample) {
-                        setShowWorkedExamplePanel(true)
+                        setShowWorkedExamplePanel(!activePrerequisiteSupport)
                         setTimeout(() => workedExampleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
                       }
                     }}
@@ -918,7 +1003,7 @@ export default function GuidedPage() {
             </div>
           )}
 
-          {/* ── Worked example (fading for concept; unlocked after 3 wrong for others) ── */}
+          {/* ── Example stays available on demand; repeated difficulty opens it automatically. ── */}
           {activeWorkedExample && (
             <div ref={workedExampleRef} className="rounded-lg border border-blue-200 bg-blue-50 overflow-hidden">
               <button
@@ -927,7 +1012,7 @@ export default function GuidedPage() {
               >
                 <BookOpen className="w-5 h-5 text-blue-600 shrink-0" />
                 <span className="text-sm font-medium text-blue-800">
-                  {showWorkedExamplePanel ? 'Hide worked example' : 'See a worked example'}
+                  {showWorkedExamplePanel ? 'Hide example' : 'Show an example'}
                 </span>
                 <span className="ml-auto text-xs text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">
                   Different problem
@@ -1073,6 +1158,11 @@ export default function GuidedPage() {
 
         {/* Submit button */}
         <div className="border-t px-6 py-4 bg-white">
+          {!activeHint1 && step.hintText && confidenceGatePassed && (
+            <Button type="button" variant="outline" onClick={() => setShowFirstHint(true)} className="mr-2">
+              Give me a hint
+            </Button>
+          )}
           <Button
             onClick={handleSubmit}
             disabled={

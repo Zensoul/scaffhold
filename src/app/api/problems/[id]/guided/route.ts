@@ -12,6 +12,14 @@ type StepOption = {
   optionText: string
   orderIndex: number
 }
+type PrerequisiteSupport = {
+  skill: string
+  explanation: string
+  easierExample: string
+  checkPrompt: string
+  checkAnswer: string
+  checkTolerance: number
+}
 
 type GuidedStepResponse = {
   stepId: string
@@ -25,13 +33,12 @@ type GuidedStepResponse = {
   // Formula card — always visible on the left panel regardless of attempt count
   formulaCard: string | null
   // 3-level progressive hints
-  hintText: string | null       // contextual  — after ≥1 wrong
+  hintText: string | null       // contextual — available on request or after a wrong answer
   hintText2: string | null      // procedural  — after ≥2 wrong
   hintText3: string | null      // bottom-out  — after ≥3 wrong
   hintWasRephrased: boolean
   errorFeedback: string | null  // only sent after a wrong attempt
-  // Worked example — fading: concept steps send it immediately (before attempt);
-  // other steps unlock after ≥3 wrong
+  // Worked example — available on demand and auto-opened after two wrong attempts when authored.
   workedExample: {
     text: string
     svgStage: number
@@ -48,6 +55,7 @@ type GuidedStepResponse = {
   // Concept enrichment — only on concept steps
   conceptVideoUrl: string | null   // animation explaining WHY this concept applies
   socraticPrompt: string | null    // think-first question before MCQ attempt
+  prerequisiteSupport: PrerequisiteSupport | null
 }
 
 // ─── Adaptive error classification ───────────────────────────────────────────
@@ -237,7 +245,7 @@ export async function GET(
   })
 
   // ── 3-level progressive hints ──────────────────────────────────────────────
-  const hintText  = attemptCount >= 1 ? nextStep.hintText  : null
+  const hintText  = nextStep.hintText
   const hintText2 = attemptCount >= 2 ? (nextStep.hintText2 ?? null) : null
   const hintText3 = attemptCount >= 3 ? (nextStep.hintText3 ?? null) : null
 
@@ -247,6 +255,17 @@ export async function GET(
 
   // ── Self-explain only shown once worked example is visible ─────────────────
   const showSelfExplain = showWorkedExample && nextStep.selfExplainPrompt != null
+  const prerequisiteSupport = attemptCount >= 2 && nextStep.prerequisiteSkill && nextStep.prerequisiteExplanation &&
+    nextStep.prerequisiteExample && nextStep.prerequisiteCheckPrompt && nextStep.prerequisiteCheckAnswer
+    ? {
+        skill: nextStep.prerequisiteSkill,
+        explanation: nextStep.prerequisiteExplanation,
+        easierExample: nextStep.prerequisiteExample,
+        checkPrompt: nextStep.prerequisiteCheckPrompt,
+        checkAnswer: nextStep.prerequisiteCheckAnswer,
+        checkTolerance: nextStep.prerequisiteCheckTolerance ?? 0,
+      }
+    : null
 
   return NextResponse.json({
     problemComplete: false,
@@ -296,6 +315,7 @@ export async function GET(
           : null,
       errorType: null,
       attemptCount,
+      prerequisiteSupport,
       conceptVideoUrl: nextStep.stepType === 'concept' ? (nextStep.conceptVideoUrl ?? null) : null,
       socraticPrompt: nextStep.stepType === 'concept' ? (nextStep.socraticPrompt ?? null) : null,
     } satisfies GuidedStepResponse,
@@ -434,9 +454,20 @@ export async function POST(
   const hintText2 = newWrongCount >= 2 ? (step.hintText2 ?? null) : null
   const hintText3 = newWrongCount >= 3 ? (step.hintText3 ?? null) : null
 
-  // Worked example after ≥3 wrong (concept steps already show it from GET)
-  const showWorkedExample = newWrongCount >= 3 && step.workedExampleText != null
+  // Bring authored review support forward after two unsuccessful attempts.
+  const showWorkedExample = newWrongCount >= 2 && step.workedExampleText != null
   const showSelfExplain = showWorkedExample && step.selfExplainPrompt != null
+  const prerequisiteSupport = newWrongCount >= 2 && step.prerequisiteSkill && step.prerequisiteExplanation &&
+    step.prerequisiteExample && step.prerequisiteCheckPrompt && step.prerequisiteCheckAnswer
+    ? {
+        skill: step.prerequisiteSkill,
+        explanation: step.prerequisiteExplanation,
+        easierExample: step.prerequisiteExample,
+        checkPrompt: step.prerequisiteCheckPrompt,
+        checkAnswer: step.prerequisiteCheckAnswer,
+        checkTolerance: step.prerequisiteCheckTolerance ?? 0,
+      }
+    : null
 
   // Adaptive error type classification for numeric steps
   const errorType =
@@ -476,5 +507,6 @@ export async function POST(
           }
         : null,
     attemptCount: newWrongCount,
+    prerequisiteSupport,
   })
 }

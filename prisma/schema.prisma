@@ -650,13 +650,13 @@ model SolveStep {
   inputType             InputType
   correctAnswer         String             // For numeric: decimal string; for MCQ: option text
   tolerance             Float?             // Only used when inputType = numeric (e.g. 0.01)
-  hintText              String             // Contextual hint — shown after 1st wrong answer
+  hintText              String             // Contextual hint — available on request or after a wrong answer
   hintText2             String?            // Procedural hint — shown after 2nd wrong answer
   hintText3             String?            // Bottom-out hint — shown after 3rd wrong answer
   errorFeedback         String             // Shown immediately on a wrong answer
   formulaCard           String?            // Always-visible formula reference on left panel
   svgStage              Int                // Which SVG stage to show for this step (0-7)
-  workedExampleText     String?            // Full worked example shown after 3rd fail
+  workedExampleText     String?            // Worked example available on demand; auto-opened after 2 wrong answers
   workedExampleSvgStage Int?               // SVG stage for the worked example panel
   selfExplainPrompt     String?            // Reflection prompt shown after worked example
   selfExplainAnswer     String?            // Model answer for self-explanation
@@ -664,6 +664,12 @@ model SolveStep {
   followUpAnswer        String?            // Correct answer for follow-up (numeric or MCQ text)
   followUpInputType     InputType?         // 'numeric' or 'mcq'
   followUpTolerance     Float?             // Tolerance for numeric follow-up
+  prerequisiteSkill         String?            // Specific prior skill this step depends on
+  prerequisiteExplanation  String?            // Short, plain-language refresher for that skill
+  prerequisiteExample      String?            // Simpler worked example before retrying the main step
+  prerequisiteCheckPrompt  String?            // One short check to see if the refresher helped
+  prerequisiteCheckAnswer  String?            // Expected numeric answer for the check
+  prerequisiteCheckTolerance Float?           // Tolerance for the prerequisite check
   conceptVideoUrl       String?            // Short video/animation explaining WHY this concept applies (Option B)
   socraticPrompt        String?            // Think-first question before the MCQ attempt (Option C)
   options               SolveStepOption[]
