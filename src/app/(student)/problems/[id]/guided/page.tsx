@@ -176,6 +176,7 @@ function ComprehensionQuiz({
       .replace(/\s+\bis\b\s+[\d°π²³/.,][\d°π²³/.,\s\w]*$/i, '') // strip " is <value>" at end
       .replace(/\b\d+([.,]\d+)?\s*(cm²|cm|mm²|mm|m²|km|m|°|π|%)?\b/g, '') // strip standalone numbers+units
       .replace(/^(the|a|an)\s+/i, '') // strip leading article
+      .replace(/[,.:;!?]+$/, '') // strip trailing punctuation left after number removal
       .replace(/\s{2,}/g, ' ') // collapse double spaces
       .trim()
       .toLowerCase()
