@@ -173,7 +173,7 @@ function ComprehensionQuiz({
   const unknownDistractors = [
     ...allGivens.slice(0, 2).map(toConceptPhrase),
     'the perimeter of the figure',
-  ].filter(d => d !== problem.unknownAnnotation)
+  ].filter(d => d !== problem.unknownAnnotation && !/\d/.test(d))
   const unknownChoices = shuffle(
     [problem.unknownAnnotation, ...unknownDistractors]
       .filter((v, i, a) => a.indexOf(v) === i)
