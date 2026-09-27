@@ -102,6 +102,7 @@ async function draftForProblem(problem) {
           'The example must show the arithmetic through to its final result, not stop at a formula substitution.',
           'The quick check must test the prerequisite, use different and easier numbers than the main problem, and ask for a final numeric result only.',
           'Do not ask the student to choose or write a formula/expression when the interface expects a number.',
+          'This numeric-only rule also applies when the guided step asks for a word or triangle type: check a related numeric fact instead, such as an angle sum, fraction, length, or area.',
           'Calculate the exact answer to each quick check and make prerequisiteCheckAnswer match it; do not include units or prose in that field.',
           'Show correct units where relevant. Keep language supportive, short, and concrete. Avoid extra theory.',
           'Do not solve the main problem in the refresher. Do not introduce facts or formulas not needed for this step.',
