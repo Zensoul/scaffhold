@@ -67,7 +67,8 @@ async function main() {
   }
 
   for (const lesson of lessons) {
-    const step = guidedProblem.steps.find((candidate) => candidate.sequenceOrder === lesson.sequenceOrder)!
+    const step = guidedProblem.steps.find((candidate) => candidate.sequenceOrder === lesson.sequenceOrder)
+    if (!step) throw new Error(`Expected step ${lesson.sequenceOrder} was not found.`)
     await prisma.solveStep.update({
       where: { id: step.id },
       data: {
