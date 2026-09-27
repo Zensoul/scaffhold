@@ -168,7 +168,7 @@ function ComprehensionQuiz({
       .replace(/\s{2,}/g, ' ') // collapse double spaces
       .trim()
       .toLowerCase()
-    return s ? \`the \${s}\` : given.toLowerCase()
+    return s ? `the ${s}` : given.toLowerCase()
   }
   const unknownDistractors = [
     ...allGivens.slice(0, 2).map(toConceptPhrase),
