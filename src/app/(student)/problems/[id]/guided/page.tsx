@@ -52,7 +52,12 @@ type ProblemInfo = {
   givens: string[]
   impliedGivens: string[]
   unknownAnnotation: string
-  diagramConfig: { r: number; theta: number; isMajorSegment?: boolean; problemType?: 'sector' | 'arc' | 'segment' | 'combination' }
+  diagramConfig: {
+    r: number
+    theta: number
+    isMajorSegment?: boolean
+    problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' | 'none'
+  }
 }
 
 type GetResponse =
@@ -583,11 +588,26 @@ export default function GuidedPage() {
 
   if (!data) return null
 
+  const allGivens = (() => {
+    const givens = data.problem.givens
+    const givenItems = Array.isArray(givens)
+      ? givens
+      : givens && typeof givens === 'object'
+        ? Object.entries(givens as Record<string, string>).map(([key, value]) => `${key} = ${value}`)
+        : []
+    return [...givenItems, ...(Array.isArray(data.problem.impliedGivens) ? data.problem.impliedGivens : [])]
+  })()
+  const diagramConfig = (() => {
+    const { problemType, ...geometry } = data.problem.diagramConfig
+    if (!problemType || problemType === 'none') return null
+    return { ...geometry, problemType }
+  })()
+
   // ── Problem complete ───────────────────────────────────────────────────────
   if (data.problemComplete) {
     return (
       <div className="flex flex-col items-center gap-6 px-4 py-10 text-center">
-        <GuidedDiagram stage={7} problemComplete={true} className="max-w-xs" config={data.problem.diagramConfig} />
+        {diagramConfig && <GuidedDiagram stage={7} problemComplete={true} className="max-w-xs" config={diagramConfig} />}
         <div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Problem solved!</h2>
           <p className="text-muted-foreground">
@@ -610,17 +630,6 @@ export default function GuidedPage() {
 
   // ── Comprehension phase ────────────────────────────────────────────────────
   // Active identification: student must select givens and unknown, not just read them
-  const allGivens = (() => {
-    const g = data.problem.givens
-    const arr: string[] = Array.isArray(g)
-      ? g
-      : g && typeof g === 'object'
-        ? Object.entries(g as Record<string, string>).map(([k, v]) => `${k} = ${v}`)
-        : []
-    const imp = Array.isArray(data.problem.impliedGivens) ? data.problem.impliedGivens : []
-    return [...arr, ...imp]
-  })()
-
   if (comprehensionPhase !== 'solving') {
     return (
       <ComprehensionQuiz
@@ -705,22 +714,28 @@ export default function GuidedPage() {
           )}
         </div>
 
-        {/* Diagram */}
-        <div
-          className={`w-full transition-all duration-300 ${
-            correctFlash ? 'ring-4 ring-green-400 rounded-xl' : ''
-          }`}
-        >
-          <GuidedDiagram
-            stage={
-              showWorkedExamplePanel && activeWorkedExample
-                ? activeWorkedExample.svgStage
-                : diagramStage
-            }
-            problemComplete={false}
-            config={data.problem.diagramConfig}
-          />
-        </div>
+        {/* Show only a relevant visual; keep given values visible for non-diagram problems. */}
+        {diagramConfig ? (
+          <div className={`w-full transition-all duration-300 ${correctFlash ? 'ring-4 ring-green-400 rounded-xl' : ''}`}>
+            <GuidedDiagram
+              stage={showWorkedExamplePanel && activeWorkedExample ? activeWorkedExample.svgStage : diagramStage}
+              problemComplete={false}
+              config={diagramConfig}
+            />
+          </div>
+        ) : (
+          <div className="w-full rounded-lg border border-sky-200 bg-sky-50 px-4 py-4 space-y-3">
+            <p className="text-xs font-semibold text-sky-800 uppercase tracking-wide">Information to use</p>
+            {allGivens.length > 0 ? (
+              <ul className="space-y-1.5 text-sm text-sky-950">
+                {allGivens.map((given, index) => <li key={`${index}-${given}`}>• {given}</li>)}
+              </ul>
+            ) : (
+              <p className="text-sm text-sky-950">Read the problem details above. You can use a hint or worked example at any step.</p>
+            )}
+            <p className="text-sm text-sky-950"><span className="font-medium">Find:</span> {data.problem.unknownAnnotation}</p>
+          </div>
+        )}
       </div>
 
       {/* ── Right: Step card ── */}

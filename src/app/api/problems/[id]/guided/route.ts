@@ -132,7 +132,9 @@ export async function GET(
   const thetaMatch = rawTextLC.match(/angle[^0-9]*([0-9]+)/)
 
   // Determine problem type for diagram selection
-  let problemType: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' = 'segment'
+  // Only use a visual diagram when the problem is actually one the renderer supports.
+  // Defaulting to `segment` made algebra/statistics problems show a misleading circle.
+  let problemType: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' | 'none' = 'none'
   if (rawTextLC.includes('mirror') || (rawTextLC.includes('focal length') && !rawTextLC.includes('lens'))) {
     // Spherical mirror problems: mirror formula, magnification, focal length from R
     problemType = 'mirror'
@@ -154,9 +156,9 @@ export async function GET(
   ) {
     problemType = 'circles-in-square'
   } else if (
-    rawTextLC.includes('square') ||
     rawTextLC.includes('semicircle') ||
-    rawTextLC.includes('inscribed')
+    (rawTextLC.includes('inscribed') && rawTextLC.includes('circle')) ||
+    (rawTextLC.includes('square') && rawTextLC.includes('circle'))
   ) {
     problemType = 'combination'
   } else if (rawTextLC.includes('segment') || rawTextLC.includes('chord')) {
