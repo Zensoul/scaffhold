@@ -1,0 +1,983 @@
+{
+  "formatVersion": 1,
+  "generatedAt": "2026-09-27T18:34:46.516Z",
+  "model": "gpt-4o",
+  "studentFlowChanged": false,
+  "reviewRequired": true,
+  "targetProblemCount": 16,
+  "activeMathProblemCount": 55,
+  "activeMathProblemsWithoutGuidedFlow": 36,
+  "drafts": [
+    {
+      "problemId": "0ed924df-8461-44d3-91b6-28cfada27b92",
+      "chapter": "Areas Related to Circles",
+      "problemText": "A horse is tied to one corner of a square field of side 20 m by a rope of length 14 m. Find the area of the field the horse can graze. (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 983,
+      "completionTokens": 488,
+      "latencyMs": 5035,
+      "lessons": [
+        {
+          "stepId": "88d60620-399d-40e8-8178-34bf391f1a39",
+          "sequenceOrder": 1,
+          "stepLabel": "Sector at a corner",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Recognizing a right angle and a quarter-turn",
+          "prerequisiteExplanation": "Each corner of a square is 90°. A rope turning from one side of the corner to the other sweeps 90° out of a full 360° circle, so the grazing shape is a quarter-circle.",
+          "prerequisiteExample": "A full turn is 360°. One quarter of it is 360 ÷ 4 = 90°.",
+          "prerequisiteCheckPrompt": "What fraction of a full turn is a 90° angle? Give a decimal.",
+          "prerequisiteCheckAnswer": "0.25",
+          "prerequisiteCheckTolerance": 0.001
+        },
+        {
+          "stepId": "42a338d0-efae-4cd0-84e1-3ff863771d78",
+          "sequenceOrder": 2,
+          "stepLabel": "Set up the sector formula",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Using the angle fraction in the sector-area formula",
+          "prerequisiteExplanation": "A sector takes θ/360 of the full circle. Its area is (θ/360) × π × r². Put the angle, radius, and π into those places before calculating.",
+          "prerequisiteExample": "For r = 2 cm and θ = 90°: (90/360) × 3.14 × 2² = 1/4 × 3.14 × 4 = 3.14 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a 90° sector with radius 3 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "7.065",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "5cd7e3ac-0958-4b2e-afc9-6ed5fa963075",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate the grazing area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Simplifying fractions and multiplying",
+          "prerequisiteExplanation": "To simplify a fraction, divide the numerator and the denominator by their greatest common divisor. For example, 90/360 simplifies to 1/4 because both 90 and 360 can be divided by 90. Then multiply the simplified fraction by other numbers as needed.",
+          "prerequisiteExample": "Simplify 50/100. Both 50 and 100 can be divided by 50, so 50/100 = 1/2. Then multiply 1/2 by 4: (1/2) × 4 = 2.",
+          "prerequisiteCheckPrompt": "Simplify 20/40 and then multiply by 3. What is the result?",
+          "prerequisiteCheckAnswer": "1.5",
+          "prerequisiteCheckTolerance": 0.1
+        }
+      ]
+    },
+    {
+      "problemId": "30a5c8b1-1a35-4436-9321-077730575925",
+      "chapter": "Areas Related to Circles",
+      "problemText": "Find the area of a sector of a circle with radius 14 cm and central angle 90°. (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 1045,
+      "completionTokens": 400,
+      "latencyMs": 4038,
+      "lessons": [
+        {
+          "stepId": "017deced-4fb4-4eb2-a735-3f571fe7f543",
+          "sequenceOrder": 1,
+          "stepLabel": "What is a sector?",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Understanding the concept of a circle's radius",
+          "prerequisiteExplanation": "The radius of a circle is the distance from the center of the circle to any point on its edge. It's a straight line segment that helps define the size of the circle.",
+          "prerequisiteExample": "If a circle has a radius of 5 cm, it means every point on the circle is 5 cm away from the center.",
+          "prerequisiteCheckPrompt": "A circle has radius 8 cm. How far is it from the centre to the edge, in cm?",
+          "prerequisiteCheckAnswer": "8",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "8d38d63a-6df3-446d-82ce-a48908a4ec8a",
+          "sequenceOrder": 2,
+          "stepLabel": "Set up the formula",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Using the angle fraction in the sector-area formula",
+          "prerequisiteExplanation": "A sector is θ/360 of a full circle. Find the full circle area πr², then take that fraction.",
+          "prerequisiteExample": "For r = 2 cm and θ = 90°: 90/360 = 1/4 and πr² = 3.14 × 4 = 12.56, so sector area = 1/4 × 12.56 = 3.14 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a 60° sector with radius 3 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "4.71",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "243beec0-d9a8-41d6-8fb7-a192a89de455",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate the area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Simplifying fractions",
+          "prerequisiteExplanation": "Simplifying a fraction means reducing it to its smallest form by dividing the numerator and the denominator by their greatest common divisor.",
+          "prerequisiteExample": "For 90/360 × 8: simplify 90/360 to 1/4, then 1/4 × 8 = 2.",
+          "prerequisiteCheckPrompt": "Simplify 90/360, then multiply the result by 12.",
+          "prerequisiteCheckAnswer": "3",
+          "prerequisiteCheckTolerance": 0
+        }
+      ]
+    },
+    {
+      "problemId": "3374919b-89c7-4146-9b9c-ef72a7a1235c",
+      "chapter": "Areas Related to Circles",
+      "problemText": "A circular brooch of diameter 35 mm is to be divided into two equal parts by a diameter. One part is to be coloured red and the other white. Find the perimeter of each coloured part (i.e., the perimeter of a semicircle). (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 903,
+      "completionTokens": 568,
+      "latencyMs": 4094,
+      "lessons": [
+        {
+          "stepId": "91a6d27e-9520-4ebc-b3de-d5c35dab4393",
+          "sequenceOrder": 1,
+          "stepLabel": "Semicircle perimeter",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Understanding the components of a semicircle's perimeter",
+          "prerequisiteExplanation": "The perimeter of a semicircle includes the curved part of the circle and the straight line across the diameter. To find the perimeter, you need to add the length of the curved arc to the length of the diameter.",
+          "prerequisiteExample": "With diameter 10 mm and π = 3.14, the curved half is 3.14 × 10 ÷ 2 = 15.7 mm. Add the 10 mm diameter: perimeter = 25.7 mm.",
+          "prerequisiteCheckPrompt": "What is the perimeter of a semicircle with diameter 4 mm? Use π = 3.14.",
+          "prerequisiteCheckAnswer": "10.28",
+          "prerequisiteCheckTolerance": 0.02
+        },
+        {
+          "stepId": "8faa5259-9b5c-489f-b96e-755f54fdcf0e",
+          "sequenceOrder": 2,
+          "stepLabel": "Length of the curved arc",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Calculating half the circumference of a circle",
+          "prerequisiteExplanation": "To find the length of the curved arc of a semicircle, calculate half the circumference of the full circle. The formula for the circumference of a circle is π times the diameter. For a semicircle, use half of this value.",
+          "prerequisiteExample": "For a circle with a diameter of 14 mm, the full circumference is π × 14 = 44 mm (using π = 22/7). The curved arc of the semicircle is half of this: 44 ÷ 2 = 22 mm.",
+          "prerequisiteCheckPrompt": "What is the length of the curved arc of a semicircle with a diameter of 10 mm? (Use π = 22/7)",
+          "prerequisiteCheckAnswer": "15.71",
+          "prerequisiteCheckTolerance": 0.1
+        },
+        {
+          "stepId": "a9507eaf-7157-41b6-b0d0-ef6134619321",
+          "sequenceOrder": 3,
+          "stepLabel": "Total perimeter of semicircle",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Adding two lengths to find a total perimeter",
+          "prerequisiteExplanation": "To find the total perimeter of a semicircle, add the length of the curved arc to the length of the diameter. This gives you the complete distance around the semicircle.",
+          "prerequisiteExample": "If the curved arc of a semicircle is 12 mm and the diameter is 8 mm, the total perimeter is 12 + 8 = 20 mm.",
+          "prerequisiteCheckPrompt": "What is the total perimeter of a semicircle with a curved arc of 7 mm and a diameter of 5 mm?",
+          "prerequisiteCheckAnswer": "12",
+          "prerequisiteCheckTolerance": 0.1
+        }
+      ]
+    },
+    {
+      "problemId": "4d2ab531-ae56-49c0-9b0d-a837f1eb93d3",
+      "chapter": "Areas Related to Circles",
+      "problemText": "Find the area of a sector of a circle with radius 21 cm and central angle 60°. (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 1040,
+      "completionTokens": 472,
+      "latencyMs": 3792,
+      "lessons": [
+        {
+          "stepId": "26b8a075-f1cf-40a1-a73f-a553c3bc3299",
+          "sequenceOrder": 1,
+          "stepLabel": "What is a sector?",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Understanding circle parts",
+          "prerequisiteExplanation": "A sector is a part of a circle, like a slice of pizza. To find its area, you need to know the radius (distance from the center to the edge) and the central angle (how wide the slice is).",
+          "prerequisiteExample": "If a circle has a radius of 14 cm and a central angle of 90°, the sector is defined by these two values.",
+          "prerequisiteCheckPrompt": "What is the radius if a circle's diameter is 10 cm?",
+          "prerequisiteCheckAnswer": "5",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "78fd3789-6394-429c-a010-aaab7e239c4a",
+          "sequenceOrder": 2,
+          "stepLabel": "Set up the formula",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Substituting values into expressions",
+          "prerequisiteExplanation": "To find the area of a sector, substitute the given values into the formula: Area = (θ/360) × π × r². Replace θ with the central angle, r with the radius, and π with 22/7.",
+          "prerequisiteExample": "For r = 14 cm and θ = 90°: 90/360 = 1/4; πr² = (22/7) × 196 = 616; sector area = 1/4 × 616 = 154 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a sector with r = 10 cm and θ = 45°. Use π = 22/7. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "39.2857",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "d20756aa-fee9-4395-a926-50faadfaa9a5",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate the area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Simplifying fractions and multiplying",
+          "prerequisiteExplanation": "To calculate the area, simplify the fraction and multiply step by step. Start with the angle fraction, then multiply by π and the square of the radius.",
+          "prerequisiteExample": "Calculate (90/360) × (22/7) × 14²: Simplify to (1/4) × (22/7) × 196 = 154 cm².",
+          "prerequisiteCheckPrompt": "Calculate (1/4) × (22/7) × 16.",
+          "prerequisiteCheckAnswer": "12.57",
+          "prerequisiteCheckTolerance": 0.02
+        }
+      ]
+    },
+    {
+      "problemId": "5396ad02-9246-43e2-855a-79a7f23567a9",
+      "chapter": "Areas Related to Circles",
+      "problemText": "Find the length of the arc of a sector of a circle with radius 15 cm and central angle 120°. (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 989,
+      "completionTokens": 541,
+      "latencyMs": 4602,
+      "lessons": [
+        {
+          "stepId": "9bdcf39e-982a-44d2-bd40-d7ff6b08f048",
+          "sequenceOrder": 1,
+          "stepLabel": "Arc length formula",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Understanding fractions of a whole",
+          "prerequisiteExplanation": "To find the arc length, we need to understand that it is a fraction of the circle's circumference. The fraction is determined by the central angle compared to a full circle (360°).",
+          "prerequisiteExample": "If a circle has a circumference of 30 cm and you want to find the arc length for a central angle of 90°, you calculate (90/360) × 30 = (1/4) × 30 = 7.5 cm.",
+          "prerequisiteCheckPrompt": "What is (90/360) × 40?",
+          "prerequisiteCheckAnswer": "10",
+          "prerequisiteCheckTolerance": 0.1
+        },
+        {
+          "stepId": "0218523d-23ab-4546-9e4e-83779818048e",
+          "sequenceOrder": 2,
+          "stepLabel": "Substitute values",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Substituting values into an expression",
+          "prerequisiteExplanation": "Substituting values means replacing variables in an expression with given numbers. Here, replace θ with 120, r with 15, and π with 22/7 in the arc length formula.",
+          "prerequisiteExample": "For the expression (θ/360) × 2 × π × r, substitute θ = 90, r = 10, π = 3.14: (90/360) × 2 × 3.14 × 10 = (1/4) × 2 × 3.14 × 10 = 15.7.",
+          "prerequisiteCheckPrompt": "Calculate the arc length for θ = 60°, r = 5 cm, and π = 3.14. Give the answer in cm.",
+          "prerequisiteCheckAnswer": "5.23",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "a77bc912-e35b-40a6-9d06-00d35d83bd8b",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate the arc length",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Simplifying fractions and multiplying",
+          "prerequisiteExplanation": "To calculate the arc length, simplify the fraction (120/360) to (1/3) and then multiply by the other numbers in the expression.",
+          "prerequisiteExample": "Simplify (90/360) to (1/4) and multiply: (1/4) × 2 × (22/7) × 10 = (1/4) × (440/7) = 110/7 = 15.71.",
+          "prerequisiteCheckPrompt": "Simplify (60/360) and multiply by 2 × (22/7) × 5.",
+          "prerequisiteCheckAnswer": "5.24",
+          "prerequisiteCheckTolerance": 0.01
+        }
+      ]
+    },
+    {
+      "problemId": "5bfd8947-2a6e-43c3-8e9e-a3b062230f6d",
+      "chapter": "Areas Related to Circles",
+      "problemText": "A square ABCD of side 14 cm has a circle inscribed inside it touching all four sides. Find the area of the region between the square and the circle. (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 1149,
+      "completionTokens": 596,
+      "latencyMs": 4094,
+      "lessons": [
+        {
+          "stepId": "54cfb11a-88d5-43ef-ae62-e172efef6c41",
+          "sequenceOrder": 1,
+          "stepLabel": "Identify the shapes",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Understanding diameter and radius relationship",
+          "prerequisiteExplanation": "The diameter of a circle is twice its radius. If you know the diameter, you can find the radius by dividing the diameter by 2.",
+          "prerequisiteExample": "If the diameter of a circle is 10 cm, then the radius is 10 ÷ 2 = 5 cm.",
+          "prerequisiteCheckPrompt": "What is the radius of a circle with a diameter of 8 cm?",
+          "prerequisiteCheckAnswer": "4",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "f5d56559-9be3-4ab6-92a0-dff955d61b40",
+          "sequenceOrder": 2,
+          "stepLabel": "Find the radius",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Dividing a number by 2",
+          "prerequisiteExplanation": "To find half of a number, divide it by 2. This is useful for finding the radius when you know the diameter or side length of a square.",
+          "prerequisiteExample": "To find half of 14, calculate 14 ÷ 2 = 7.",
+          "prerequisiteCheckPrompt": "What is half of 10?",
+          "prerequisiteCheckAnswer": "5",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "d2c7e7dd-91ea-4b23-acc5-abcb454e4b19",
+          "sequenceOrder": 3,
+          "stepLabel": "Area of the square",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Squaring a number",
+          "prerequisiteExplanation": "To find the area of a square, multiply the side length by itself. This is called squaring the number.",
+          "prerequisiteExample": "If the side of a square is 5 cm, the area is 5 × 5 = 25 cm².",
+          "prerequisiteCheckPrompt": "What is 3 squared?",
+          "prerequisiteCheckAnswer": "9",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "b8ba272d-d609-45f3-9303-4b1a9b88e635",
+          "sequenceOrder": 4,
+          "stepLabel": "Area of the circle",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Multiplying fractions and whole numbers",
+          "prerequisiteExplanation": "To multiply a fraction by a whole number, multiply the numerator by the whole number and divide by the denominator.",
+          "prerequisiteExample": "To calculate (22/7) × 7², first find 7² = 49, then multiply: (22/7) × 49 = (22 × 49) ÷ 7 = 154.",
+          "prerequisiteCheckPrompt": "Find the area of a circle with radius 2 cm. Use π = 22/7. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "12.57",
+          "prerequisiteCheckTolerance": 0.02
+        },
+        {
+          "stepId": "17105a8a-0a83-4137-a8ee-c934eda3f852",
+          "sequenceOrder": 5,
+          "stepLabel": "Area between square and circle",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Subtracting two numbers",
+          "prerequisiteExplanation": "To find the difference between two numbers, subtract the smaller number from the larger number.",
+          "prerequisiteExample": "To find the difference between 10 and 4, calculate 10 - 4 = 6.",
+          "prerequisiteCheckPrompt": "What is 15 minus 7?",
+          "prerequisiteCheckAnswer": "8",
+          "prerequisiteCheckTolerance": 0
+        }
+      ]
+    },
+    {
+      "problemId": "612256f9-ea99-4f23-882f-46a322c56f56",
+      "chapter": "Areas Related to Circles",
+      "problemText": "A design is made by drawing 4 equal semicircles on each side of a square of side 14 cm, with each semicircle drawn inside the square. Find the area of the shaded design. (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 1247,
+      "completionTokens": 715,
+      "latencyMs": 5218,
+      "lessons": [
+        {
+          "stepId": "e54c94ee-c63c-42fe-a8e5-0318b461e80e",
+          "sequenceOrder": 1,
+          "stepLabel": "Semicircles on each side",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Understanding the relationship between a square's side and a semicircle's diameter",
+          "prerequisiteExplanation": "The diameter of a semicircle drawn on a side of a square is equal to the length of that side.",
+          "prerequisiteExample": "If a square has a side length of 10 cm, then the diameter of a semicircle drawn on that side is also 10 cm.",
+          "prerequisiteCheckPrompt": "What is the diameter of a semicircle drawn on a square with side length 8 cm?",
+          "prerequisiteCheckAnswer": "8",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "573e4a69-24c3-4004-bef5-085af9d547f9",
+          "sequenceOrder": 2,
+          "stepLabel": "Area of one semicircle",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Calculating the area of a semicircle",
+          "prerequisiteExplanation": "To find the area of a semicircle, use the formula: (1/2) × π × r², where r is the radius.",
+          "prerequisiteExample": "For a semicircle with radius 3 cm, the area is (1/2) × (22/7) × 3² = (1/2) × (22/7) × 9 = 14.14 cm².",
+          "prerequisiteCheckPrompt": "Calculate the area of a semicircle with radius 2 cm. (Use π = 22/7)",
+          "prerequisiteCheckAnswer": "6.28",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "3c7aea15-278f-4be1-a0f6-3729015f5a70",
+          "sequenceOrder": 3,
+          "stepLabel": "Total area of 4 semicircles",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Multiplying to find the total area of multiple semicircles",
+          "prerequisiteExplanation": "To find the total area of multiple semicircles, multiply the area of one semicircle by the number of semicircles.",
+          "prerequisiteExample": "If the area of one semicircle is 5 cm², then the total area of 4 semicircles is 4 × 5 = 20 cm².",
+          "prerequisiteCheckPrompt": "What is the total area of 3 semicircles, each with an area of 4 cm²?",
+          "prerequisiteCheckAnswer": "12",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "725bead6-f18f-46b7-9109-b73a6638f48a",
+          "sequenceOrder": 4,
+          "stepLabel": "Area of the square",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Calculating the area of a square",
+          "prerequisiteExplanation": "The area of a square is found by squaring the length of one side.",
+          "prerequisiteExample": "For a square with side length 5 cm, the area is 5² = 25 cm².",
+          "prerequisiteCheckPrompt": "What is the area of a square with side length 6 cm?",
+          "prerequisiteCheckAnswer": "36",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "bb3a5d5a-6c67-4f5c-90d4-2ce24fa959f1",
+          "sequenceOrder": 5,
+          "stepLabel": "Shaded design area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Doubling one area before subtracting another",
+          "prerequisiteExplanation": "For the step’s calculation, double the square area first, then subtract the combined semicircle area. Keep the areas in the same units.",
+          "prerequisiteExample": "If the square area is 50 cm² and the combined semicircle area is 70 cm²: 2 × 50 − 70 = 30 cm².",
+          "prerequisiteCheckPrompt": "Calculate 2 × 20 − 25.",
+          "prerequisiteCheckAnswer": "15",
+          "prerequisiteCheckTolerance": 0
+        }
+      ]
+    },
+    {
+      "problemId": "8e313a50-3ce4-4a45-8072-96d49522b144",
+      "chapter": "Areas Related to Circles",
+      "problemText": "A chord of a circle of radius 10 cm subtends a central angle of 120°. Find the area of the corresponding major segment. (Use π = 3.14 and √3 = 1.73.)",
+      "model": "gpt-4o",
+      "promptTokens": 1936,
+      "completionTokens": 1180,
+      "latencyMs": 7415,
+      "lessons": [
+        {
+          "stepId": "e96e4f86-3d72-4e0c-8fc4-06bd6553d7d5",
+          "sequenceOrder": 1,
+          "stepLabel": "What is a major segment?",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Finding the larger part when a chord splits a circle",
+          "prerequisiteExplanation": "A chord makes a smaller segment and a larger segment. The major segment is the larger part. If you know the minor part as a percentage, subtract it from 100%.",
+          "prerequisiteExample": "If the minor segment is 25% of the circle, the major segment is 100% − 25% = 75%.",
+          "prerequisiteCheckPrompt": "The minor segment is 30% of a circle. What percentage is the major segment?",
+          "prerequisiteCheckAnswer": "70",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "7c4aa2ea-7a10-4a83-b873-91e0ab8fb4f5",
+          "sequenceOrder": 2,
+          "stepLabel": "Set up circle area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Substituting values into a formula",
+          "prerequisiteExplanation": "To find the area of a circle, substitute the radius value into the formula: Area = π × r². Replace π with 3.14 and r with the given radius.",
+          "prerequisiteExample": "For a circle with radius 6 cm, Area = 3.14 × 6² = 3.14 × 36 = 113.04 cm².",
+          "prerequisiteCheckPrompt": "Calculate the area of a circle with radius 5 cm using π = 3.14.",
+          "prerequisiteCheckAnswer": "78.5",
+          "prerequisiteCheckTolerance": 0.5
+        },
+        {
+          "stepId": "be0db76c-2a16-4948-86c7-0e0572ff1007",
+          "sequenceOrder": 3,
+          "stepLabel": "Find full circle area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Squaring the radius before multiplying by π",
+          "prerequisiteExplanation": "The area of a circle is πr². Square the radius first, then multiply by π.",
+          "prerequisiteExample": "For r = 6 cm and π = 3.14: 6² = 36, then 3.14 × 36 = 113.04 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a circle with radius 4 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "50.24",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "c3d7ef20-1c5e-4798-9855-2d367a3a0dc8",
+          "sequenceOrder": 4,
+          "stepLabel": "Set up minor sector",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Setting up a fraction of a circle",
+          "prerequisiteExplanation": "To find the area of a sector, use the formula: (θ/360) × π × r². This finds the fraction of the circle's area corresponding to the angle θ.",
+          "prerequisiteExample": "For θ = 90°, r = 6 cm, Area = (90/360) × 3.14 × 36 = 28.26 cm².",
+          "prerequisiteCheckPrompt": "What is (90/360) × 3.14 × 25?",
+          "prerequisiteCheckAnswer": "19.625",
+          "prerequisiteCheckTolerance": 0.02
+        },
+        {
+          "stepId": "3327b2e0-a8b8-4228-b50d-81c37c871fd7",
+          "sequenceOrder": 5,
+          "stepLabel": "Calculate minor sector area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Simplifying fractions",
+          "prerequisiteExplanation": "Simplify the fraction 120/360 to 1/3, then multiply by the circle's area to find the sector area.",
+          "prerequisiteExample": "(1/3) × 3.14 × 36 = 37.68 cm²",
+          "prerequisiteCheckPrompt": "Simplify 90/360 and calculate (simplified fraction) × 3.14 × 25.",
+          "prerequisiteCheckAnswer": "19.625",
+          "prerequisiteCheckTolerance": 0.02
+        },
+        {
+          "stepId": "49b07ada-e1f9-451a-a7bb-091e011e6ebd",
+          "sequenceOrder": 6,
+          "stepLabel": "Triangle area formula",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Using sine in area calculation",
+          "prerequisiteExplanation": "For a triangle with two equal sides and an included angle, use Area = (1/2) × r² × sin θ. Substitute the values for r and sin θ.",
+          "prerequisiteExample": "For r = 6, θ = 120°, sin 120° = 0.866, Area = (1/2) × 36 × 0.866 = 15.59 cm².",
+          "prerequisiteCheckPrompt": "Calculate (1/2) × 4² × 0.5.",
+          "prerequisiteCheckAnswer": "4",
+          "prerequisiteCheckTolerance": 0.5
+        },
+        {
+          "stepId": "3af11635-7c8e-41a1-b0fb-eda76ab2c681",
+          "sequenceOrder": 7,
+          "stepLabel": "Calculate triangle area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Multiplying decimals",
+          "prerequisiteExplanation": "To find the area of the triangle, multiply (1/2) × r² × sin θ. Here, multiply 50 by 0.865.",
+          "prerequisiteExample": "0.5 × 36 × 0.866 = 15.59 cm²",
+          "prerequisiteCheckPrompt": "Calculate 0.5 × 20 × 0.5.",
+          "prerequisiteCheckAnswer": "5",
+          "prerequisiteCheckTolerance": 0.5
+        },
+        {
+          "stepId": "6d94e0c9-d5ba-49c7-abf0-da7eac571460",
+          "sequenceOrder": 8,
+          "stepLabel": "Find minor segment area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Subtracting decimals",
+          "prerequisiteExplanation": "To find the minor segment area, subtract the triangle area from the minor sector area.",
+          "prerequisiteExample": "37.68 − 15.59 = 22.09 cm²",
+          "prerequisiteCheckPrompt": "Subtract 15.5 from 37.6.",
+          "prerequisiteCheckAnswer": "22.1",
+          "prerequisiteCheckTolerance": 0.5
+        },
+        {
+          "stepId": "44f8dbf8-d716-4b5a-b802-9441187c9676",
+          "sequenceOrder": 9,
+          "stepLabel": "Find major segment area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Subtracting decimals",
+          "prerequisiteExplanation": "To find the major segment area, subtract the minor segment area from the full circle area.",
+          "prerequisiteExample": "113.04 − 22.09 = 90.95 cm²",
+          "prerequisiteCheckPrompt": "Subtract 22.1 from 113.",
+          "prerequisiteCheckAnswer": "90.9",
+          "prerequisiteCheckTolerance": 0.5
+        }
+      ]
+    },
+    {
+      "problemId": "b4e71d0e-7642-43d0-9552-852c8fa16d28",
+      "chapter": "Areas Related to Circles",
+      "problemText": "Four circles each of radius 7 cm are drawn, each touching two adjacent sides of a square of side 14 cm. Find the area of the square not covered by the circles. (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 1075,
+      "completionTokens": 611,
+      "latencyMs": 4808,
+      "lessons": [
+        {
+          "stepId": "f15db2f0-e9bf-4e11-a272-0c78808025c5",
+          "sequenceOrder": 1,
+          "stepLabel": "Corner quarter-circles",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Understanding fractions of a circle",
+          "prerequisiteExplanation": "A circle is 360°. A quarter-circle is 90°, which is 1/4 of a full circle.",
+          "prerequisiteExample": "If a circle is divided into 4 equal parts, each part is a quarter-circle. 360° ÷ 4 = 90°.",
+          "prerequisiteCheckPrompt": "What is 360° divided by 4?",
+          "prerequisiteCheckAnswer": "90",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "0a1a27b8-e147-4944-a339-b1626f747fdb",
+          "sequenceOrder": 2,
+          "stepLabel": "Combine the quarters",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Adding fractions",
+          "prerequisiteExplanation": "When you add four 1/4 fractions, you get a whole (1).",
+          "prerequisiteExample": "1/4 + 1/4 + 1/4 + 1/4 = 1",
+          "prerequisiteCheckPrompt": "What is 1/4 + 1/4?",
+          "prerequisiteCheckAnswer": "0.5",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "8326324d-50a1-4d71-b870-3eefa5e20393",
+          "sequenceOrder": 3,
+          "stepLabel": "Area of the square",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Calculating the area of a square",
+          "prerequisiteExplanation": "The area of a square is found by multiplying its side length by itself.",
+          "prerequisiteExample": "If a square has a side of 3 cm, its area is 3 × 3 = 9 cm².",
+          "prerequisiteCheckPrompt": "What is the area of a square with side 2 cm?",
+          "prerequisiteCheckAnswer": "4",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "d8d8d2f1-16da-4acc-b239-596cb7d1cb2c",
+          "sequenceOrder": 4,
+          "stepLabel": "Combined area of the circles",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Calculating the area of a circle",
+          "prerequisiteExplanation": "The area of a circle is π times the radius squared (πr²).",
+          "prerequisiteExample": "If a circle has a radius of 3 cm, its area is (22/7) × 3² = (22/7) × 9 = 28.2857 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a circle with radius 2 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "12.56",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "a6986383-5d13-4359-b87b-53f9bda19904",
+          "sequenceOrder": 5,
+          "stepLabel": "Uncovered area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Subtracting areas",
+          "prerequisiteExplanation": "To find the uncovered area, subtract the area of the circles from the area of the square.",
+          "prerequisiteExample": "If a square has an area of 10 cm² and a circle inside has an area of 3 cm², the uncovered area is 10 - 3 = 7 cm².",
+          "prerequisiteCheckPrompt": "What is 5 - 2?",
+          "prerequisiteCheckAnswer": "3",
+          "prerequisiteCheckTolerance": 0
+        }
+      ]
+    },
+    {
+      "problemId": "c58297bd-17d1-456f-bb0e-9f8364b38dd3",
+      "chapter": "Areas Related to Circles",
+      "problemText": "Find the length of the arc of a sector of a circle with radius 15 cm and central angle 120°. (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 992,
+      "completionTokens": 453,
+      "latencyMs": 4812,
+      "lessons": [
+        {
+          "stepId": "80bbf2e2-1516-4045-8ec1-cc3be0d60e3e",
+          "sequenceOrder": 1,
+          "stepLabel": "Arc length formula",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Understanding fractions of a whole",
+          "prerequisiteExplanation": "To find the arc length, we need to understand that it is a fraction of the circle's circumference. The fraction is determined by the central angle compared to the full circle (360°).",
+          "prerequisiteExample": "If a pizza is cut into 8 equal slices, each slice is 1/8 of the whole pizza. If you have 3 slices, you have 3/8 of the pizza.",
+          "prerequisiteCheckPrompt": "If a cake is cut into 10 equal pieces and you have 4 pieces, what fraction of the cake do you have?",
+          "prerequisiteCheckAnswer": "0.4",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "de40d8ac-da36-4178-a52f-e0c4fbcdaaa3",
+          "sequenceOrder": 2,
+          "stepLabel": "Substitute values",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Using the angle fraction in the arc-length formula",
+          "prerequisiteExplanation": "Arc length = (θ/360) × 2πr. First find what fraction θ is of a full 360° turn, then multiply by the full circumference.",
+          "prerequisiteExample": "For θ = 90°, r = 2 cm, and π = 3.14: 90/360 = 1/4; 2πr = 12.56; arc length = 1/4 × 12.56 = 3.14 cm.",
+          "prerequisiteCheckPrompt": "Find the arc length for θ = 90° and r = 4 cm. Use π = 3.14. Give the answer in cm.",
+          "prerequisiteCheckAnswer": "6.28",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "a143af8c-844e-4de8-8f39-dedbb2e309fe",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate the arc length",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Simplifying fractions",
+          "prerequisiteExplanation": "Simplifying fractions involves reducing them to their simplest form by dividing the numerator and the denominator by their greatest common divisor.",
+          "prerequisiteExample": "Simplify 120/360 to 1/3. Then 1/3 × 12 = 4.",
+          "prerequisiteCheckPrompt": "Simplify 60/360, then multiply the result by 12.",
+          "prerequisiteCheckAnswer": "2",
+          "prerequisiteCheckTolerance": 0
+        }
+      ]
+    },
+    {
+      "problemId": "d09e9ae7-d454-47d2-aa7f-9f1af24724d9",
+      "chapter": "Areas Related to Circles",
+      "problemText": "Find the area of a sector of a circle with radius 21 cm and central angle 60°. (Use π = 22/7.)",
+      "model": "gpt-4o",
+      "promptTokens": 1047,
+      "completionTokens": 408,
+      "latencyMs": 3201,
+      "lessons": [
+        {
+          "stepId": "d32fbe90-3f71-4586-ac25-41002135ae47",
+          "sequenceOrder": 1,
+          "stepLabel": "What is a sector?",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Understanding the concept of a circle's radius",
+          "prerequisiteExplanation": "The radius of a circle is the distance from the center of the circle to any point on its edge. It's a straight line segment that helps define the size of the circle.",
+          "prerequisiteExample": "If a circle has a radius of 5 cm, it means every point on the circle is 5 cm away from the center.",
+          "prerequisiteCheckPrompt": "What is the radius of a circle if the distance from the center to the edge is 8 cm?",
+          "prerequisiteCheckAnswer": "8",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "6dcbc246-8d4d-4bb7-9445-e5e410162c4c",
+          "sequenceOrder": 2,
+          "stepLabel": "Set up the formula",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Using the angle fraction in the sector-area formula",
+          "prerequisiteExplanation": "A sector takes θ/360 of a full circle. Find πr², then multiply it by that fraction.",
+          "prerequisiteExample": "For r = 2 cm, θ = 90°, and π = 3.14: 90/360 = 1/4; πr² = 3.14 × 4 = 12.56; sector area = 3.14 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a 60° sector with radius 3 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "4.71",
+          "prerequisiteCheckTolerance": 0.01
+        },
+        {
+          "stepId": "d0c7f9ca-ecb4-4eda-b770-4a8ad6b34621",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate the area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Simplifying fractions",
+          "prerequisiteExplanation": "Simplifying a fraction means reducing it to its smallest form by dividing both the numerator and the denominator by their greatest common divisor.",
+          "prerequisiteExample": "Simplify 90/360 to 1/4. Then 1/4 × 8 = 2.",
+          "prerequisiteCheckPrompt": "Simplify 90/360, then multiply the result by 12.",
+          "prerequisiteCheckAnswer": "3",
+          "prerequisiteCheckTolerance": 0
+        }
+      ]
+    },
+    {
+      "problemId": "d93d4fa0-3374-4f8e-a3da-b3539a7891ff",
+      "chapter": "Areas Related to Circles",
+      "problemText": "A chord of a circle of radius 12 cm subtends a central angle of 60°. Find the area of the corresponding minor segment. (Use π = 3.14 and √3 = 1.73.)",
+      "model": "gpt-4o",
+      "promptTokens": 569,
+      "completionTokens": 231,
+      "latencyMs": 2422,
+      "lessons": [
+        {
+          "stepId": "4d14a8f3-6e2c-43a3-be21-86ef272d5b08",
+          "sequenceOrder": 1,
+          "stepLabel": "What is a minor segment?",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Subtracting a triangle area from a sector area",
+          "prerequisiteExplanation": "A sector is bounded by two radii and an arc. The minor segment is the curved piece between a chord and its arc. Its area is the sector area minus the triangle area.",
+          "prerequisiteExample": "If a sector is 20 cm² and the triangle inside it is 8 cm², the minor segment is 20 − 8 = 12 cm².",
+          "prerequisiteCheckPrompt": "A sector has area 15 cm² and its triangle has area 6 cm². What is the segment area in cm²?",
+          "prerequisiteCheckAnswer": "9",
+          "prerequisiteCheckTolerance": 0
+        }
+      ]
+    },
+    {
+      "problemId": "d9d7357b-022d-498a-9aac-3bd493515d5d",
+      "chapter": "Areas Related to Circles",
+      "problemText": "A chord of a circle of radius 15 cm subtends a central angle of 90°. Find the area of the corresponding minor segment. (Use π = 3.14.)",
+      "model": "gpt-4o",
+      "promptTokens": 1436,
+      "completionTokens": 955,
+      "latencyMs": 8517,
+      "lessons": [
+        {
+          "stepId": "09c6fc23-ff21-4756-a8d8-17c7d1b667e2",
+          "sequenceOrder": 1,
+          "stepLabel": "What is a minor segment?",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Subtracting the triangle area from the sector area",
+          "prerequisiteExplanation": "The minor segment is the part of a sector left outside the triangle formed by the radii and chord. Find it by subtracting triangle area from sector area.",
+          "prerequisiteExample": "If the sector area is 20 cm² and the triangle area is 8 cm², the minor segment area is 20 − 8 = 12 cm².",
+          "prerequisiteCheckPrompt": "A sector has area 18 cm² and its triangle has area 7 cm². What is the minor segment area in cm²?",
+          "prerequisiteCheckAnswer": "11",
+          "prerequisiteCheckTolerance": 0
+        },
+        {
+          "stepId": "6868eeb8-3aa3-47a0-be86-c3835f25309a",
+          "sequenceOrder": 2,
+          "stepLabel": "Set up sector area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Substituting values into a formula",
+          "prerequisiteExplanation": "To find the area of a sector, substitute the given values for the angle and radius into the formula: Sector area = (θ/360) × π × r².",
+          "prerequisiteExample": "For a circle with r = 6 cm and θ = 90°, Sector area = (90/360) × 3.14 × 6² = 28.26 cm².",
+          "prerequisiteCheckPrompt": "Calculate the sector area for r = 3 cm and θ = 90° using π = 3.14.",
+          "prerequisiteCheckAnswer": "7.065",
+          "prerequisiteCheckTolerance": 0.1
+        },
+        {
+          "stepId": "b6ba3184-e4f9-4cd0-9e9a-0d62973a6e64",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate sector area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Calculating fractions of a product",
+          "prerequisiteExplanation": "To find the sector area, calculate the fraction of the circle's area using the formula: (1/4) × π × r².",
+          "prerequisiteExample": "Calculate (1/4) × 3.14 × 36 = 28.26 cm².",
+          "prerequisiteCheckPrompt": "Compute (1/4) × 3.14 × 16.",
+          "prerequisiteCheckAnswer": "12.56",
+          "prerequisiteCheckTolerance": 0.1
+        },
+        {
+          "stepId": "9fa197b1-f7b1-4e0a-b4e6-fea456d09360",
+          "sequenceOrder": 4,
+          "stepLabel": "Triangle type at 90°",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Identifying right-angled triangles",
+          "prerequisiteExplanation": "A triangle with a 90° angle is a right-angled triangle. The area is calculated using (1/2) × base × height.",
+          "prerequisiteExample": "For a right-angled triangle with base = 6 cm and height = 6 cm, Area = (1/2) × 6 × 6 = 18 cm².",
+          "prerequisiteCheckPrompt": "What is the area of a right-angled triangle with base = 4 cm and height = 4 cm?",
+          "prerequisiteCheckAnswer": "8",
+          "prerequisiteCheckTolerance": 0.1
+        },
+        {
+          "stepId": "90fcaa37-ef50-4fc7-a40e-bf1ff18a983d",
+          "sequenceOrder": 5,
+          "stepLabel": "Set up triangle area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Substituting values into a triangle area formula",
+          "prerequisiteExplanation": "For a right-angled triangle with equal legs, substitute the radius for both base and height in the formula: Area = (1/2) × r × r.",
+          "prerequisiteExample": "For r = 6 cm, Area = (1/2) × 6 × 6 = 18 cm².",
+          "prerequisiteCheckPrompt": "Calculate the area of a right-angled triangle with r = 4 cm.",
+          "prerequisiteCheckAnswer": "8",
+          "prerequisiteCheckTolerance": 0.1
+        },
+        {
+          "stepId": "4c03a528-0c69-4527-b969-1b1bb4511aef",
+          "sequenceOrder": 6,
+          "stepLabel": "Calculate triangle area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Multiplying and dividing numbers",
+          "prerequisiteExplanation": "To find the area of a triangle, multiply the base and height, then divide by 2.",
+          "prerequisiteExample": "Calculate (1/2) × 6 × 6 = 18 cm².",
+          "prerequisiteCheckPrompt": "Compute (1/2) × 4 × 4.",
+          "prerequisiteCheckAnswer": "8",
+          "prerequisiteCheckTolerance": 0.1
+        },
+        {
+          "stepId": "5cf39c5e-78f1-4772-ad6c-7f3b58e47e10",
+          "sequenceOrder": 7,
+          "stepLabel": "Find minor segment area",
+          "reviewStatus": "approved",
+          "prerequisiteSkill": "Subtracting numbers",
+          "prerequisiteExplanation": "To find the area of the minor segment, subtract the triangle area from the sector area.",
+          "prerequisiteExample": "If Sector area = 28.26 cm² and Triangle area = 18 cm², Minor segment = 28.26 − 18 = 10.26 cm².",
+          "prerequisiteCheckPrompt": "Subtract 5 from 12.",
+          "prerequisiteCheckAnswer": "7",
+          "prerequisiteCheckTolerance": 0.1
+        }
+      ]
+    },
+    {
+      "problemId": "a9f89982-895d-4d14-bdff-4d744ccbfd77",
+      "chapter": "Areas Related to Circles",
+      "problemText": "A chord of a circle of radius 12 cm subtends a central angle of 60°. Find the area of the corresponding minor segment. (Use π = 3.14 and √3 = 1.73.)",
+      "model": "manual-reviewed",
+      "promptTokens": 0,
+      "completionTokens": 0,
+      "latencyMs": 0,
+      "lessons": [
+        {
+          "stepId": "adfa3c76-8f40-4b31-bf5f-3bf23b6efc1d",
+          "sequenceOrder": 1,
+          "stepLabel": "What is a minor segment?",
+          "prerequisiteSkill": "Finding the curved part left after removing a triangle",
+          "prerequisiteExplanation": "The sector is the slice bounded by two radii and an arc. The chord and arc enclose a segment. The minor segment area is sector area minus triangle area.",
+          "prerequisiteExample": "If a sector has area 20 cm² and the triangle inside it has area 8 cm², the segment area is 20 − 8 = 12 cm².",
+          "prerequisiteCheckPrompt": "A sector has area 50 cm² and its triangle has area 32 cm². What is the segment area in cm²?",
+          "prerequisiteCheckAnswer": "18",
+          "prerequisiteCheckTolerance": 0,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "4c2dcd6a-a2ee-4d2d-91c7-883968db1135",
+          "sequenceOrder": 2,
+          "stepLabel": "Set up sector area",
+          "prerequisiteSkill": "Finding the angle fraction of a full circle",
+          "prerequisiteExplanation": "A full circle is 360°. A sector with angle θ is θ/360 of the circle, so its area is that fraction of πr².",
+          "prerequisiteExample": "For θ = 90° and r = 2 cm with π = 3.14: 90/360 = 1/4; circle area = 3.14 × 4 = 12.56; sector area = 1/4 × 12.56 = 3.14 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a 90° sector with radius 3 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "7.065",
+          "prerequisiteCheckTolerance": 0.01,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "c929c233-ead9-4d71-b9d7-2936ec12e298",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate sector area",
+          "prerequisiteSkill": "Squaring the radius and multiplying by the angle fraction",
+          "prerequisiteExplanation": "In πr², square r by multiplying it by itself. Then multiply by π and by the fraction θ/360.",
+          "prerequisiteExample": "For a 90° sector with r = 2 cm and π = 3.14: 2² = 4; 1/4 × 3.14 × 4 = 3.14 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a 60° sector with radius 3 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "4.71",
+          "prerequisiteCheckTolerance": 0.01,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "84b047e7-b6cb-457f-a26e-7438a7567b51",
+          "sequenceOrder": 4,
+          "stepLabel": "Triangle type at 60°",
+          "prerequisiteSkill": "Finding equal angles in an isosceles triangle",
+          "prerequisiteExplanation": "The two radii are equal, so the triangle is isosceles. Its two base angles are equal. With a 60° angle between the radii, the other two angles share 120°, so they are 60° each; the triangle is equilateral.",
+          "prerequisiteExample": "If an isosceles triangle has a top angle of 80°, its base angles are (180° − 80°) ÷ 2 = 50° each.",
+          "prerequisiteCheckPrompt": "An isosceles triangle has a top angle of 100°. What is each equal base angle in degrees?",
+          "prerequisiteCheckAnswer": "40",
+          "prerequisiteCheckTolerance": 0,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "0bc71234-47e9-4cd8-be38-649be24b0e49",
+          "sequenceOrder": 5,
+          "stepLabel": "Set up triangle area",
+          "prerequisiteSkill": "Using the equilateral-triangle area formula",
+          "prerequisiteExplanation": "For an equilateral triangle with side a, area = (√3 ÷ 4) × a². In this problem, the equal side is the circle radius.",
+          "prerequisiteExample": "For side 2 cm and √3 = 1.73: area = (1.73 ÷ 4) × 2² = 1.73 cm².",
+          "prerequisiteCheckPrompt": "An equilateral triangle has side 4 cm. Use √3 = 1.73. What is its area in cm²?",
+          "prerequisiteCheckAnswer": "6.92",
+          "prerequisiteCheckTolerance": 0.01,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "dc0013ce-16ed-4469-8149-9cf549685ab0",
+          "sequenceOrder": 6,
+          "stepLabel": "Calculate triangle area",
+          "prerequisiteSkill": "Multiplying a decimal by a whole number",
+          "prerequisiteExplanation": "You can divide 144 by 4 first, then multiply by 1.73: (1.73 ÷ 4) × 144 = 1.73 × 36.",
+          "prerequisiteExample": "For side 4 cm: (1.73 ÷ 4) × 16 = 1.73 × 4 = 6.92 cm².",
+          "prerequisiteCheckPrompt": "Work out (1.73 ÷ 4) × 36.",
+          "prerequisiteCheckAnswer": "15.57",
+          "prerequisiteCheckTolerance": 0.01,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "91c5abeb-25d2-4e08-a172-ca1b240604e9",
+          "sequenceOrder": 7,
+          "stepLabel": "Find minor segment area",
+          "prerequisiteSkill": "Subtracting one area from another",
+          "prerequisiteExplanation": "Both areas use cm². Subtract the triangle area from the sector area to find the curved segment left over.",
+          "prerequisiteExample": "If the sector is 20 cm² and the triangle is 8 cm², the segment is 20 − 8 = 12 cm².",
+          "prerequisiteCheckPrompt": "A sector has area 50 cm² and its triangle has area 32 cm². What is the segment area in cm²?",
+          "prerequisiteCheckAnswer": "18",
+          "prerequisiteCheckTolerance": 0,
+          "reviewStatus": "approved"
+        }
+      ]
+    },
+    {
+      "problemId": "aab762af-f42a-40de-8ffb-9511c514ea9c",
+      "chapter": "Areas Related to Circles",
+      "problemText": "Find the area of a sector of a circle with radius 6 cm and central angle 60°. (Use π = 22/7.)",
+      "model": "manual-reviewed",
+      "promptTokens": 0,
+      "completionTokens": 0,
+      "latencyMs": 0,
+      "lessons": [
+        {
+          "stepId": "83a058ff-57c1-480a-b1d5-14addd36a4cd",
+          "sequenceOrder": 1,
+          "stepLabel": "What is a sector?",
+          "prerequisiteSkill": "Using a sector angle as part of a full turn",
+          "prerequisiteExplanation": "A sector is the part of a circle between two radii and the arc. Its area depends on the radius and how much of the full 360° turn the central angle covers.",
+          "prerequisiteExample": "A 90° sector is 90/360 = 1/4 of a circle.",
+          "prerequisiteCheckPrompt": "What decimal fraction of a full circle is a 90° sector?",
+          "prerequisiteCheckAnswer": "0.25",
+          "prerequisiteCheckTolerance": 0.001,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "03872ebc-d58f-4a64-94b9-59fdb9c4c8e4",
+          "sequenceOrder": 2,
+          "stepLabel": "Set up the formula",
+          "prerequisiteSkill": "Substituting into the sector-area formula",
+          "prerequisiteExplanation": "Sector area = (θ/360) × π × r². Replace θ with the angle, r with the radius, and π with the value supplied.",
+          "prerequisiteExample": "For r = 4 cm, θ = 90°, π = 3.14: (90/360) × 3.14 × 4² = 1/4 × 3.14 × 16 = 12.56 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a 90° sector with radius 2 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "3.14",
+          "prerequisiteCheckTolerance": 0.01,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "c468e235-86cc-46ff-89e9-4ffa6a5a7d1a",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate the area",
+          "prerequisiteSkill": "Squaring the radius before multiplying",
+          "prerequisiteExplanation": "In πr², r² means radius × radius. Work that out first, then take the angle fraction of the circle area.",
+          "prerequisiteExample": "For r = 2 cm and θ = 90°: 2² = 4; (1/4) × 3.14 × 4 = 3.14 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a 60° sector with radius 3 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "4.71",
+          "prerequisiteCheckTolerance": 0.01,
+          "reviewStatus": "approved"
+        }
+      ]
+    },
+    {
+      "problemId": "fe9086f8-b13a-4595-9899-af64cd83a500",
+      "chapter": "Areas Related to Circles",
+      "problemText": "Find the area of a sector of a circle with radius 6 cm and central angle 60°. (Use π = 22/7.)",
+      "model": "manual-reviewed",
+      "promptTokens": 0,
+      "completionTokens": 0,
+      "latencyMs": 0,
+      "lessons": [
+        {
+          "stepId": "a6bcc211-a9aa-47ef-ad9d-ed695ae355cb",
+          "sequenceOrder": 1,
+          "stepLabel": "What is a sector?",
+          "prerequisiteSkill": "Using a sector angle as part of a full turn",
+          "prerequisiteExplanation": "A sector is the part of a circle between two radii and the arc. Its area depends on the radius and how much of the full 360° turn the central angle covers.",
+          "prerequisiteExample": "A 90° sector is 90/360 = 1/4 of a circle.",
+          "prerequisiteCheckPrompt": "What decimal fraction of a full circle is a 90° sector?",
+          "prerequisiteCheckAnswer": "0.25",
+          "prerequisiteCheckTolerance": 0.001,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "34b1a99a-1a60-4ab6-9f7d-33c4079f44a3",
+          "sequenceOrder": 2,
+          "stepLabel": "Set up the formula",
+          "prerequisiteSkill": "Substituting into the sector-area formula",
+          "prerequisiteExplanation": "Sector area = (θ/360) × π × r². Replace θ with the angle, r with the radius, and π with the value supplied.",
+          "prerequisiteExample": "For r = 4 cm, θ = 90°, π = 3.14: (90/360) × 3.14 × 4² = 1/4 × 3.14 × 16 = 12.56 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a 90° sector with radius 2 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "3.14",
+          "prerequisiteCheckTolerance": 0.01,
+          "reviewStatus": "approved"
+        },
+        {
+          "stepId": "4bb2f455-77b7-49fd-9c58-14dd5d6c44a0",
+          "sequenceOrder": 3,
+          "stepLabel": "Calculate the area",
+          "prerequisiteSkill": "Squaring the radius before multiplying",
+          "prerequisiteExplanation": "In πr², r² means radius × radius. Work that out first, then take the angle fraction of the circle area.",
+          "prerequisiteExample": "For r = 2 cm and θ = 90°: 2² = 4; (1/4) × 3.14 × 4 = 3.14 cm².",
+          "prerequisiteCheckPrompt": "Find the area of a 60° sector with radius 3 cm. Use π = 3.14. Give the answer in cm².",
+          "prerequisiteCheckAnswer": "4.71",
+          "prerequisiteCheckTolerance": 0.01,
+          "reviewStatus": "approved"
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "reviewCompletedBy": "manual mathematical and relevance review",
+  "reviewedLessonCount": 66
+}
