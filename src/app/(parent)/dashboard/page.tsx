@@ -109,10 +109,14 @@ export default async function ParentDashboardPage() {
                 {levels.length > 0 && (
                   <div className="mb-4 rounded-lg border bg-secondary/30 px-4 py-3">
                     <div className="mb-1.5 flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground">Overall mastery</span>
+                      <span className="font-medium text-foreground">Help faded</span>
                       <span className="font-semibold text-foreground">{avgMasteryPct}%</span>
                     </div>
                     <Progress value={avgMasteryPct} className="h-2" />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Higher means fewer problem details are shown upfront as your child practices.
+                      It is not a test of overall mastery.
+                    </p>
                     <p className="mt-2 text-xs text-muted-foreground">
                       {totalClean}/{totalAttempted} problems correct across {levels.length}{' '}
                       {levels.length === 1 ? 'chapter' : 'chapters'}

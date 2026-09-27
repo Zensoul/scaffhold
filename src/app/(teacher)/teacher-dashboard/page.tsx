@@ -365,12 +365,13 @@ export default function TeacherDashboardPage() {
                           </p>
                         </div>
                         <Badge variant={masteryTone(s.avgMasteryPct)} className="shrink-0 text-[0.65rem]">
-                          {s.avgMasteryPct}% mastery
+                          {s.avgMasteryPct}% help faded
                         </Badge>
                       </div>
 
                       <div className="mt-3">
                         <Progress value={s.avgMasteryPct} className="h-1.5" />
+                        <p className="mt-1 text-[11px] text-muted-foreground">Higher means students see fewer problem details upfront.</p>
                       </div>
 
                       <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">

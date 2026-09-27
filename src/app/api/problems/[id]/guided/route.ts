@@ -360,11 +360,18 @@ export async function POST(
 
   // Grade the answer
   let isCorrect: boolean
+  let numericFormatError = false
   if (step.inputType === 'numeric') {
-    const studentNum = parseFloat(answer.trim())
-    const correctNum = parseFloat(step.correctAnswer)
+    // Require the entire response to be a number. parseFloat alone accepts
+    // values such as "12abc", which can incorrectly mark an answer correct.
+    const numericAnswerPattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i
+    const normalizedAnswer = answer.trim()
+    const hasValidNumericFormat = numericAnswerPattern.test(normalizedAnswer)
+    numericFormatError = !hasValidNumericFormat
+    const studentNum = hasValidNumericFormat ? Number(normalizedAnswer) : NaN
+    const correctNum = Number(step.correctAnswer.trim())
     const tol = step.tolerance ?? 0.01
-    isCorrect = !isNaN(studentNum) && Math.abs(studentNum - correctNum) <= tol
+    isCorrect = Number.isFinite(studentNum) && Number.isFinite(correctNum) && Math.abs(studentNum - correctNum) <= tol
   } else {
     isCorrect = answer.trim().toLowerCase() === step.correctAnswer.trim().toLowerCase()
   }
@@ -439,7 +446,9 @@ export async function POST(
 
   return NextResponse.json({
     isCorrect: false,
-    errorFeedback: step.errorFeedback,
+    errorFeedback: numericFormatError
+      ? 'Enter a number only. Leave out words and units; the question shows the unit.'
+      : step.errorFeedback,
     errorType,
     hintText,
     hintText2,

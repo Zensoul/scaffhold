@@ -325,7 +325,8 @@ export default function StudentDashboardPage() {
                         {c.hasStarted && (
                           <div>
                             <Progress value={percent} className="h-1.5" />
-                            <p className="mt-1.5 text-xs text-muted-foreground">{percent}% mastery</p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">Higher means fewer problem details are shown upfront as you practice.</p>
+                            <p className="mt-1.5 text-xs text-muted-foreground">Help faded: {percent}%</p>
                           </div>
                         )}
 
