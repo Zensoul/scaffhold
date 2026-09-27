@@ -45,7 +45,7 @@ interface DiagramConfig {
   theta: number                // central angle in degrees
   answerCm2?: string           // final answer label
   isMajorSegment?: boolean     // true for major-segment problems
-  problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'mirror' | 'lens'
+  problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens'
 }
 
 interface GuidedDiagramProps {
@@ -808,6 +808,115 @@ const lensStages: Record<number, (props: StageProps) => JSX.Element> = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 
+// ── CIRCLES-IN-SQUARE stages (0–3) ───────────────────────────────────────────
+// Problem: square of side 2r, four circles each radius r fitting into each corner.
+// Each circle touches two adjacent sides; each contributes a quarter-circle inside the square.
+// Shaded region = square area − 4 × (1/4)πr² = square area − πr²
+
+const circlesInSquareStages: Record<number, (props: StageProps) => JSX.Element> = {
+
+  // Stage 0: Overview — square with four quarter-circles at corners
+  0: ({ config: { r } }) => {
+    const S = 160   // square half-side in SVG units
+    const sx = CX - S, sy = CY - S
+    const qr = S    // quarter-circle radius = square side = 2*S... wait, r==half-side
+    // square side = 2r, quarter-circle radius = r = S
+    return (
+      <>
+        {/* Square */}
+        <rect x={sx} y={sy} width={S * 2} height={S * 2} fill="none" stroke="#D1D5DB" strokeWidth={2} />
+        {/* Four quarter-circles at each corner, filled gold */}
+        {/* top-left corner: arc sweeps right and down */}
+        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 0 ${sx} ${sy + S}`} fill={GOLD} opacity={0.45} />
+        {/* top-right corner */}
+        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy}`} fill={GOLD} opacity={0.45} />
+        {/* bottom-right corner */}
+        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 0 ${sx + S * 2} ${sy + S}`} fill={GOLD} opacity={0.45} />
+        {/* bottom-left corner */}
+        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy + S * 2}`} fill={GOLD} opacity={0.45} />
+        <text x={CX} y={CY} fontSize={11} fill="#92400E" textAnchor="middle" dominantBaseline="middle">shaded = ?</text>
+        <text x={CX} y={sy - 14} fontSize={12} fill="#1E40AF" fontWeight="bold" textAnchor="middle">
+          square side = {r * 2} cm, r = {r} cm
+        </text>
+      </>
+    )
+  },
+
+  // Stage 1: Label the square side and one quarter-circle radius
+  1: ({ config: { r } }) => {
+    const S = 160
+    const sx = CX - S, sy = CY - S
+    return (
+      <>
+        <rect x={sx} y={sy} width={S * 2} height={S * 2} fill={BLUE} opacity={0.08} stroke={BLUE} strokeWidth={2} />
+        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 0 ${sx} ${sy + S}`} fill={GOLD} opacity={0.55} />
+        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy}`} fill={GOLD} opacity={0.55} />
+        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 0 ${sx + S * 2} ${sy + S}`} fill={GOLD} opacity={0.55} />
+        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy + S * 2}`} fill={GOLD} opacity={0.55} />
+        {/* side label */}
+        <line x1={sx} y1={sy + S * 2 + 18} x2={sx + S * 2} y2={sy + S * 2 + 18} stroke={BLUE} strokeWidth={1.5} />
+        <text x={CX} y={sy + S * 2 + 32} fontSize={11} fill={BLUE} textAnchor="middle">side = {r * 2} cm</text>
+        {/* radius label on top-left quarter-circle */}
+        <line x1={sx} y1={sy + S} x2={sx + S} y2={sy} stroke={ORANGE} strokeWidth={1.5} strokeDasharray="5 3" />
+        <text x={sx + 40} y={sy + 40} fontSize={11} fill={ORANGE} fontWeight="bold">r = {r} cm</text>
+        <text x={CX} y={sy - 14} fontSize={11} fill={GREY} textAnchor="middle">4 quarter-circles (one per corner)</text>
+      </>
+    )
+  },
+
+  // Stage 2: Formula — Area = side² − πr²
+  2: ({ config: { r } }) => {
+    const S = 160
+    const sx = CX - S, sy = CY - S
+    return (
+      <>
+        <rect x={sx} y={sy} width={S * 2} height={S * 2} fill={BLUE} opacity={0.08} stroke="#D1D5DB" strokeWidth={1.5} />
+        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 0 ${sx} ${sy + S}`} fill={GOLD} opacity={0.4} />
+        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy}`} fill={GOLD} opacity={0.4} />
+        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 0 ${sx + S * 2} ${sy + S}`} fill={GOLD} opacity={0.4} />
+        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy + S * 2}`} fill={GOLD} opacity={0.4} />
+        {/* formula box */}
+        <rect x={60} y={290} width={280} height={60} rx={8} fill="#FEF3C7" stroke={GOLD} strokeWidth={1.5} />
+        <text x={200} y={314} fontSize={12} fill="#92400E" textAnchor="middle" fontWeight="bold">
+          Shaded = side² − π r²
+        </text>
+        <text x={200} y={334} fontSize={11} fill="#92400E" textAnchor="middle">
+          = ({r * 2})² − (22/7)×{r}² = ?
+        </text>
+      </>
+    )
+  },
+
+  // Stage 3: Final answer
+  3: ({ problemComplete, config: { r, answerCm2 } }) => {
+    const S = 160
+    const sx = CX - S, sy = CY - S
+    // unshaded corners = white, everything else = gold (square − circles)
+    return (
+      <>
+        <rect x={sx} y={sy} width={S * 2} height={S * 2} fill={GOLD} opacity={0.5} stroke="#D1D5DB" strokeWidth={1.5} />
+        {/* white out the four quarter-circles to reveal the unshaded petal shapes */}
+        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 0 ${sx} ${sy + S}`} fill="white" opacity={0.85} />
+        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy}`} fill="white" opacity={0.85} />
+        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 0 ${sx + S * 2} ${sy + S}`} fill="white" opacity={0.85} />
+        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy + S * 2}`} fill="white" opacity={0.85} />
+        {problemComplete && (
+          <>
+            <circle cx={CX} cy={CY} r={18} fill="#10B981" />
+            <text x={CX} y={CY + 6} textAnchor="middle" fontSize={18} fill="white" fontWeight="bold">✓</text>
+            {answerCm2 && (
+              <text x={CX} y={sy - 14} textAnchor="middle" fontSize={13} fill="#92400E" fontWeight="bold">
+                Area = {answerCm2}
+              </text>
+            )}
+          </>
+        )}
+      </>
+    )
+  },
+}
+
+
 export function GuidedDiagram({ stage, problemComplete = false, className = '', config }: GuidedDiagramProps) {
   const resolvedConfig = config ?? DEFAULT_CONFIG
   const problemType = resolvedConfig.problemType ?? 'segment'
@@ -815,7 +924,8 @@ export function GuidedDiagram({ stage, problemComplete = false, className = '', 
   const stageMap =
     problemType === 'sector'      ? sectorStages :
     problemType === 'arc'         ? arcStages :
-    problemType === 'combination' ? combinationStages :
+    problemType === 'combination'      ? combinationStages :
+    problemType === 'circles-in-square' ? circlesInSquareStages :
     problemType === 'mirror'      ? mirrorStages :
     problemType === 'lens'        ? lensStages :
     segmentStages

@@ -124,7 +124,7 @@ export async function GET(
   const thetaMatch = rawTextLC.match(/angle[^0-9]*([0-9]+)/)
 
   // Determine problem type for diagram selection
-  let problemType: 'sector' | 'arc' | 'segment' | 'combination' | 'mirror' | 'lens' = 'segment'
+  let problemType: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' = 'segment'
   if (rawTextLC.includes('mirror') || (rawTextLC.includes('focal length') && !rawTextLC.includes('lens'))) {
     // Spherical mirror problems: mirror formula, magnification, focal length from R
     problemType = 'mirror'
@@ -138,6 +138,13 @@ export async function GET(
     problemType = 'arc'
   } else if (rawTextLC.includes('area of a sector') || rawTextLC.includes('area of the sector') || rawTextLC.includes('horse')) {
     problemType = 'sector'
+  } else if (
+    // circles fitting into corners of a square — square with 4 quarter-circles at corners
+    (rawTextLC.includes('circle') && rawTextLC.includes('square') && rawTextLC.includes('touching')) ||
+    (rawTextLC.includes('four circles') && rawTextLC.includes('square')) ||
+    (rawTextLC.includes('circles') && rawTextLC.includes('corner') && rawTextLC.includes('square'))
+  ) {
+    problemType = 'circles-in-square'
   } else if (
     rawTextLC.includes('square') ||
     rawTextLC.includes('semicircle') ||
