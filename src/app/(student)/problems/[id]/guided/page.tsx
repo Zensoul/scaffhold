@@ -158,15 +158,17 @@ function ComprehensionQuiz({
   function toConceptPhrase(given: string): string {
     // "The radius of the circle is 21 cm" → "the radius of the circle"
     // "Central angle = 60°" → "the central angle"
+    // "The area of the sector is 231 cm²" → "the area of the sector"
     // "Total distance = 360 km" → "the total distance"
     const s = given
-      .replace(/=.*$/, '')          // strip = and everything after
-      .replace(/\bis\b.*/i, '')    // strip "is <value>" suffix
-      .replace(/[0-9°πcmkmm²³/]+/g, '') // strip numbers and units
-      .replace(/^(the|a|an)\s+/i, '')  // strip leading article
+      .replace(/\s*=\s*[\d°π/.,\s\w²³]*$/, '') // strip "= <value>" at end
+      .replace(/\s+\bis\b\s+[\d°π²³/.,][\d°π²³/.,\s\w]*$/i, '') // strip " is <value>" at end
+      .replace(/\b\d+([.,]\d+)?\s*(cm²|cm|mm²|mm|m²|km|m|°|π|%)?\b/g, '') // strip standalone numbers+units
+      .replace(/^(the|a|an)\s+/i, '') // strip leading article
+      .replace(/\s{2,}/g, ' ') // collapse double spaces
       .trim()
       .toLowerCase()
-    return s ? `the ${s}` : given.toLowerCase()
+    return s ? \`the \${s}\` : given.toLowerCase()
   }
   const unknownDistractors = [
     ...allGivens.slice(0, 2).map(toConceptPhrase),
