@@ -158,8 +158,19 @@ function ComprehensionQuiz({
   function toConceptPhrase(given: string): string {
     // "The radius of the circle is 21 cm" → "the radius of the circle"
     // "Central angle = 60°" → "the central angle"
-    // "The area of the sector is 231 cm²" → "the area of the sector"
-    // "Total distance = 360 km" → "the total distance"
+    // "f = 15 cm (concave)"  → "the focal length" (physics key)
+    // "u = 30 cm in front"  → "the object distance"
+    const PHYSICS_KEY_LABELS: Record<string, string> = {
+      u: 'object distance', v: 'image distance', f: 'focal length',
+      R: 'radius of curvature', m: 'magnification', n: 'refractive index',
+      c: 'speed of light in vacuum', i: 'angle of incidence', r: 'angle of refraction',
+    }
+    // Handle physics "key = value" format produced by object-givens normalisation
+    const physicsMatch = given.match(/^([a-zA-Z])\s*=\s*(.+)$/)
+    if (physicsMatch) {
+      const label = PHYSICS_KEY_LABELS[physicsMatch[1]] ?? physicsMatch[1]
+      return `the ${label}`
+    }
     const s = given
       .replace(/\s*=\s*[\d°π/.,\s\w²³]*$/, '') // strip "= <value>" at end
       .replace(/\s+\bis\b\s+[\d°π²³/.,][\d°π²³/.,\s\w]*$/i, '') // strip " is <value>" at end
@@ -568,7 +579,16 @@ export default function GuidedPage() {
 
   // ── Comprehension phase ────────────────────────────────────────────────────
   // Active identification: student must select givens and unknown, not just read them
-  const allGivens = [...(data.problem.givens ?? []), ...(data.problem.impliedGivens ?? [])]
+  const allGivens = (() => {
+    const g = data.problem.givens
+    const arr: string[] = Array.isArray(g)
+      ? g
+      : g && typeof g === 'object'
+        ? Object.entries(g as Record<string, string>).map(([k, v]) => `${k} = ${v}`)
+        : []
+    const imp = Array.isArray(data.problem.impliedGivens) ? data.problem.impliedGivens : []
+    return [...arr, ...imp]
+  })()
 
   if (comprehensionPhase !== 'solving') {
     return (

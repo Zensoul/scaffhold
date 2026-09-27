@@ -158,8 +158,21 @@ export async function GET(
   const problemInfo = {
     rawText: guidedProblem.problem.rawText,
     concreteRestatement: guidedProblem.problem.concreteRestatement,
-    givens: guidedProblem.problem.givens as string[],
-    impliedGivens: (guidedProblem.problem.impliedGivens ?? []) as string[],
+    givens: (() => {
+      const raw = guidedProblem.problem.givens
+      if (Array.isArray(raw)) return raw as string[]
+      if (raw && typeof raw === 'object') {
+        // Physics problems store givens as {u: '30 cm in front', f: '15 cm (concave)'}
+        // Convert to labelled strings so the comprehension quiz has meaningful distractors
+        return Object.entries(raw as Record<string, string>).map(([k, v]) => `${k} = ${v}`)
+      }
+      return [] as string[]
+    })(),
+    impliedGivens: (() => {
+      const raw = guidedProblem.problem.impliedGivens
+      if (Array.isArray(raw)) return raw as string[]
+      return [] as string[]
+    })(),
     unknownAnnotation: guidedProblem.problem.unknownAnnotation,
     diagramConfig,
   }
