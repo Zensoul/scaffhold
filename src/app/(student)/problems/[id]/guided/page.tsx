@@ -152,12 +152,32 @@ function ComprehensionQuiz({
   const distractors = makeDistractors(allGivens.filter((_, i) => i !== givenIndex))
   const choices = shuffle([currentGiven, ...distractors.slice(0, 3)], seed)
 
-  // Build unknown choices: correct + distractor(s)
-  const unknownChoices = shuffle([
-    problem.unknownAnnotation,
-    ...allGivens.slice(0, 2).map(g => `Find ${g}`),
-    'Find the perimeter of the figure',
-  ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 4), seed + 99)
+  // Build unknown choices: correct unknown + concept-only distractors
+  // Strip numbers/units from givens so distractors don't reveal values or look like answers.
+  // All choices use the same format as unknownAnnotation (no "Find" prefix).
+  function toConceptPhrase(given: string): string {
+    // "The radius of the circle is 21 cm" → "the radius of the circle"
+    // "Central angle = 60°" → "the central angle"
+    // "Total distance = 360 km" → "the total distance"
+    const s = given
+      .replace(/=.*$/, '')          // strip = and everything after
+      .replace(/\bis\b.*/i, '')    // strip "is <value>" suffix
+      .replace(/[0-9°πcmkmm²³/]+/g, '') // strip numbers and units
+      .replace(/^(the|a|an)\s+/i, '')  // strip leading article
+      .trim()
+      .toLowerCase()
+    return s ? `the ${s}` : given.toLowerCase()
+  }
+  const unknownDistractors = [
+    ...allGivens.slice(0, 2).map(toConceptPhrase),
+    'the perimeter of the figure',
+  ].filter(d => d !== problem.unknownAnnotation)
+  const unknownChoices = shuffle(
+    [problem.unknownAnnotation, ...unknownDistractors]
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .slice(0, 4),
+    seed + 99,
+  )
 
   function handleGivenSelect(choice: string) {
     if (result !== 'unanswered') return
