@@ -15,8 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const record = await (prisma as any).passwordResetToken.findUnique({ where: { token } })
+    const record = await prisma.passwordResetToken.findUnique({ where: { token } })
 
     if (!record) {
       return NextResponse.json({ error: 'Invalid or expired reset link.' }, { status: 400 })
@@ -30,14 +29,24 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12)
 
-    await prisma.$transaction([
-      prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
-      (prisma as any).passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
-    ])
+    // Update password and mark token used — two separate writes to avoid
+    // interactive transaction issues with pgbouncer in transaction mode
+    await prisma.user.update({
+      where: { id: record.userId },
+      data: { passwordHash },
+    })
+
+    await prisma.passwordResetToken.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    })
 
     return NextResponse.json({ message: 'Password updated successfully.' })
   } catch (err) {
     console.error('[reset-password]', err)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({
+      error: 'Something went wrong. Please try again.',
+      detail: err instanceof Error ? err.message : String(err),
+    }, { status: 500 })
   }
 }
