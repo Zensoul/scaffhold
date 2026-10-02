@@ -1203,5 +1203,7 @@ export default function GuidedPage() {
         </div>
       </div>
     </div>
+      </div>
+    </div>
   )
 }
