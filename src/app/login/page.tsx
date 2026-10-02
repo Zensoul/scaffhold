@@ -37,6 +37,7 @@ function LoginForm() {
       return
     }
 
+    router.refresh()
     router.push('/')
   }
 
