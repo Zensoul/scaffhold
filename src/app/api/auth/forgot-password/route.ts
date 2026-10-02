@@ -18,12 +18,12 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
 
     // Always return success to prevent email enumeration
-    if (!user || !user.passwordHash) {
+    if (!user || !user.passwordHash || !user.email) {
       return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' })
     }
 
     // Invalidate any existing unused tokens for this user
-    await prisma.passwordResetToken.updateMany({
+    await (prisma as any).passwordResetToken.updateMany({
       where: { userId: user.id, usedAt: null },
       data: { usedAt: new Date() },
     })
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const token = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
 
-    await prisma.passwordResetToken.create({
+    await (prisma as any).passwordResetToken.create({
       data: { userId: user.id, token, expiresAt },
     })
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     await resend.emails.send({
       from: FROM_ADDRESS,
-      to: user.email,
+      to: user.email as string,
       subject: 'Reset your Scaffhold password',
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">

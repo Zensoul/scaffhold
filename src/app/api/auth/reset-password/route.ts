@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
     }
 
-    const record = await prisma.passwordResetToken.findUnique({ where: { token } })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const record = await (prisma as any).passwordResetToken.findUnique({ where: { token } })
 
     if (!record) {
       return NextResponse.json({ error: 'Invalid or expired reset link.' }, { status: 400 })
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.$transaction([
       prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
-      prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+      (prisma as any).passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
     ])
 
     return NextResponse.json({ message: 'Password updated successfully.' })
