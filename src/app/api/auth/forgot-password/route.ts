@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM_ADDRESS = 'Scaffhold <onboarding@resend.dev>'
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  })
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Invalidate any existing unused tokens for this user
-    await (prisma as any).passwordResetToken.updateMany({
+    await prisma.passwordResetToken.updateMany({
       where: { userId: user.id, usedAt: null },
       data: { usedAt: new Date() },
     })
@@ -31,15 +38,16 @@ export async function POST(req: NextRequest) {
     const token = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
 
-    await (prisma as any).passwordResetToken.create({
+    await prisma.passwordResetToken.create({
       data: { userId: user.id, token, expiresAt },
     })
 
     const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`
 
-    await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: user.email as string,
+    const transporter = createTransporter()
+    await transporter.sendMail({
+      from: `Scaffhold <${process.env.GMAIL_USER}>`,
+      to: user.email,
       subject: 'Reset your Scaffhold password',
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -56,8 +64,11 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' })
-  } catch (err: any) {
+  } catch (err) {
     console.error('[forgot-password]', err)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.', detail: err?.message ?? String(err) }, { status: 500 })
+    return NextResponse.json({
+      error: 'Something went wrong. Please try again.',
+      detail: err instanceof Error ? err.message : String(err),
+    }, { status: 500 })
   }
 }
