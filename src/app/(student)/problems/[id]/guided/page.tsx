@@ -188,12 +188,12 @@ function ComprehensionQuiz({
       return `the ${label}`
     }
     const s = given
-      .replace(/\s*=\s*[\d°π/.,\s\w²³]*$/, '') // strip "= <value>" at end
-      .replace(/\s+\bis\b\s+[\d°π²³/.,][\d°π²³/.,\s\w]*$/i, '') // strip " is <value>" at end
-      .replace(/\b\d+([.,]\d+)?\s*(cm²|cm|mm²|mm|m²|km|m|°|π|%)?\b/g, '') // strip standalone numbers+units
-      .replace(/^(the|a|an)\s+/i, '') // strip leading article
-      .replace(/[,.:;!?]+$/, '') // strip trailing punctuation left after number removal
-      .replace(/\s{2,}/g, ' ') // collapse double spaces
+      .replace(/\s*=\s*[\d°π/.,\s\w²³]*$/, '')
+      .replace(/\s+\bis\b\s+[\d°π²³/.,][\d°π²³/.,\s\w]*$/i, '')
+      .replace(/\b\d+([.,]\d+)?\s*(cm²|cm|mm²|mm|m²|km|m|°|π|%)?\b/g, '')
+      .replace(/^(the|a|an)\s+/i, '')
+      .replace(/[,.:;!?]+$/, '')
+      .replace(/\s{2,}/g, ' ')
       .trim()
       .toLowerCase()
     return s ? `the ${s}` : given.toLowerCase()
