@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
           <h2 style="color: #1e293b;">Reset your password</h2>
-          <p>Hi ${user.name ?? 'there'},</p>
+          <p>Hi there,</p>
           <p>We received a request to reset your Scaffhold password. Click the button below to choose a new one.</p>
           <a href="${resetUrl}" style="display:inline-block;margin:24px 0;padding:12px 24px;background:#6366f1;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">
             Reset Password
