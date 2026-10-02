@@ -21,6 +21,8 @@ export type ChapterRow = {
 }
 
 export async function fetchStudentChapters(studentId: string): Promise<ChapterRow[]> {
+  const t0 = Date.now()
+
   const assignments = await prisma.chapterAssignment.findMany({
     where: { studentId },
     include: {
@@ -28,9 +30,11 @@ export async function fetchStudentChapters(studentId: string): Promise<ChapterRo
     },
     orderBy: { chapter: { sequenceNumber: 'asc' } },
   })
+  console.log(`[fetchStudentChapters] assignments query: ${Date.now() - t0}ms (${assignments.length} rows)`)
 
   const chapterIds = assignments.map((a) => a.chapterId)
 
+  const tParallel = Date.now()
   const [levels, recentSessions] = await Promise.all([
     prisma.scaffoldingLevel.findMany({
       where: { studentId, chapterId: { in: chapterIds } },
@@ -41,6 +45,8 @@ export async function fetchStudentChapters(studentId: string): Promise<ChapterRo
       take: 20,
     }),
   ])
+  console.log(`[fetchStudentChapters] levels+sessions parallel: ${Date.now() - tParallel}ms`)
+  console.log(`[fetchStudentChapters] total: ${Date.now() - t0}ms`)
 
   const levelByChapter = new Map(levels.map((l) => [l.chapterId, l]))
   const sessionsByChapter = new Map<string, typeof recentSessions>()

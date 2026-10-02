@@ -6,7 +6,12 @@ import { selectNextProblem } from '@/lib/scaffolding/adaptive-sequencing'
 
 const MODE_3_THRESHOLD = 0.8
 
+function ms(start: number) {
+  return `${Date.now() - start}ms`
+}
+
 export async function POST(request: NextRequest) {
+  const t0 = Date.now()
   const formData = await request.formData()
   const chapterId = formData.get('chapterId') as string
 
@@ -14,7 +19,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'chapterId is required' }, { status: 400 })
   }
 
+  const tAuth = Date.now()
   const studentId = await getCurrentStudentId()
+  console.log(`[start-redirect] auth: ${ms(tAuth)}`)
 
   try {
     await requireConsent(studentId)
@@ -25,9 +32,7 @@ export async function POST(request: NextRequest) {
     throw err
   }
 
-  // Run session lookup, scaffolding level upsert, and problem/interaction
-  // fetches all in parallel — previously these were sequential, costing
-  // an extra ~200-400ms on Vercel serverless per round-trip.
+  const tDb = Date.now()
   const [existing, scaffoldingLevel, allProblems, interactions] = await Promise.all([
     prisma.session.findFirst({
       where: { studentId, chapterId, endedAt: null },
@@ -58,10 +63,12 @@ export async function POST(request: NextRequest) {
       },
     }),
   ])
+  console.log(`[start-redirect] parallel DB queries: ${ms(tDb)}`)
 
   let session = existing
 
   if (!session) {
+    const tCreate = Date.now()
     session = await prisma.session.create({
       data: {
         studentId,
@@ -70,9 +77,9 @@ export async function POST(request: NextRequest) {
         scaffoldingLevelStart: scaffoldingLevel.currentLevel,
       },
     })
+    console.log(`[start-redirect] session.create: ${ms(tCreate)}`)
   }
 
-  // Pass pre-fetched data so selectNextProblem skips its own DB queries
   const nextProblem = await selectNextProblem(
     { studentId, chapterId },
     {
@@ -92,8 +99,6 @@ export async function POST(request: NextRequest) {
   const problemId = nextProblem.problemId
   const problem = allProblems.find((p) => p.id === problemId)
 
-  // Determine final destination, mirroring the logic in /problems/[id]/start,
-  // so we can skip that intermediate page entirely and save a full round-trip.
   let destination: string
   if (problem?.guidedSolve) {
     destination = `/problems/${problemId}/guided?sessionId=${session.id}`
@@ -108,5 +113,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  console.log(`[start-redirect] total: ${ms(t0)} → ${destination}`)
   return NextResponse.redirect(new URL(destination, request.url))
 }
