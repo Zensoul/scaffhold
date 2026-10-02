@@ -1113,7 +1113,8 @@ export function GuidedDiagram({ stage, problemComplete = false, className = '', 
 
   const maxStage = Object.keys(stageMap).length - 1
   const clampedStage = Math.max(0, Math.min(maxStage, Math.round(stage)))
-  const Renderer = stageMap[clampedStage] ?? stageMap[0]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Renderer = (stageMap[clampedStage] ?? stageMap[0]) as React.FC<any>
 
   return (
     <svg

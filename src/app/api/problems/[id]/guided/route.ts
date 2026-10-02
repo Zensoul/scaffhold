@@ -203,6 +203,8 @@ export async function GET(
             }
           : null,
       attemptCount,
+      totalSteps,
+      answeredSoFar,
     } satisfies GuidedStepResponse,
   })
 }
