@@ -45,7 +45,7 @@ interface DiagramConfig {
   theta: number                // central angle in degrees
   answerCm2?: string           // final answer label
   isMajorSegment?: boolean     // true for major-segment problems
-  problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens'
+  problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' | 'cylinder-hemispheres' | 'hemisphere-cone' | 'cube-hemisphere' | 'cylinder-base-hemisphere' | 'frustum' | 'frustum-cylinder' | 'none'
 }
 
 interface GuidedDiagramProps {
@@ -917,17 +917,198 @@ const circlesInSquareStages: Record<number, (props: StageProps) => JSX.Element> 
 }
 
 
+// ─── Chapter 13: Surface Areas & Volumes diagrams ────────────────────────────
+
+// Cylinder with two hemispheres (medicine capsule / gulab jamun)
+const cylinderHemispheresStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
+  0: () => (
+    <g>
+      <ellipse cx="200" cy="120" rx="60" ry="20" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
+      <ellipse cx="200" cy="260" rx="60" ry="20" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
+      <rect x="140" y="120" width="120" height="140" fill="#f0f9ff" stroke="#0284c7" strokeWidth="2" />
+      <path d="M140 120 Q110 120 110 150 Q110 100 140 120" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      <path d="M260 120 Q290 120 290 150 Q290 100 260 120" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      <path d="M140 260 Q110 260 110 230 Q110 280 140 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      <path d="M260 260 Q290 260 290 230 Q290 280 260 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      {/* Hemisphere left */}
+      <path d="M140 190 Q110 190 110 190" fill="none" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="4 2"/>
+      <text x="200" y="195" textAnchor="middle" fontSize="12" fill="#0c4a6e">Cylinder</text>
+      <text x="100" y="155" textAnchor="middle" fontSize="11" fill="#0369a1">Hemisphere</text>
+      <text x="100" y="240" textAnchor="middle" fontSize="11" fill="#0369a1">Hemisphere</text>
+    </g>
+  ),
+  1: ({ r }) => (
+    <g>
+      <ellipse cx="200" cy="120" rx="60" ry="20" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
+      <ellipse cx="200" cy="260" rx="60" ry="20" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
+      <rect x="140" y="120" width="120" height="140" fill="#f0f9ff" stroke="#0284c7" strokeWidth="2" />
+      <path d="M140 120 Q110 120 110 150 Q110 100 140 120" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      <path d="M260 120 Q290 120 290 150 Q290 100 260 120" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      <path d="M140 260 Q110 260 110 230 Q110 280 140 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      <path d="M260 260 Q290 260 290 230 Q290 280 260 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      {/* radius annotation */}
+      <line x1="200" y1="120" x2="260" y2="120" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
+      <text x="230" y="112" fontSize="13" fill="#dc2626" fontWeight="bold">r = {r ?? 'r'}</text>
+    </g>
+  ),
+}
+
+// Hemisphere + cone (toy / ice cream)
+const hemisphereConeStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
+  0: () => (
+    <g>
+      {/* Hemisphere base */}
+      <ellipse cx="200" cy="220" rx="80" ry="28" fill="#fef3c7" stroke="#d97706" strokeWidth="2" />
+      <path d="M120 220 Q120 150 200 150 Q280 150 280 220" fill="#fef9ee" stroke="#d97706" strokeWidth="2"/>
+      {/* Cone on top */}
+      <polygon points="200,60 120,220 280,220" fill="#fde68a" stroke="#d97706" strokeWidth="2"/>
+      <text x="200" y="200" textAnchor="middle" fontSize="12" fill="#92400e">Hemisphere</text>
+      <text x="200" y="145" textAnchor="middle" fontSize="12" fill="#92400e">Cone</text>
+    </g>
+  ),
+  1: ({ r }) => (
+    <g>
+      <ellipse cx="200" cy="220" rx="80" ry="28" fill="#fef3c7" stroke="#d97706" strokeWidth="2" />
+      <path d="M120 220 Q120 150 200 150 Q280 150 280 220" fill="#fef9ee" stroke="#d97706" strokeWidth="2"/>
+      <polygon points="200,60 120,220 280,220" fill="#fde68a" stroke="#d97706" strokeWidth="2"/>
+      <line x1="200" y1="220" x2="280" y2="220" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
+      <text x="240" y="215" fontSize="13" fill="#dc2626" fontWeight="bold">r = {r ?? 'r'}</text>
+    </g>
+  ),
+}
+
+// Cube with hemisphere on top (decorative block)
+const cubeHemisphereStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
+  0: () => (
+    <g>
+      {/* Cube */}
+      <rect x="130" y="170" width="140" height="140" fill="#f0fdf4" stroke="#16a34a" strokeWidth="2"/>
+      <polygon points="130,170 170,130 310,130 270,170" fill="#dcfce7" stroke="#16a34a" strokeWidth="2"/>
+      <polygon points="270,170 310,130 310,270 270,310" fill="#bbf7d0" stroke="#16a34a" strokeWidth="2"/>
+      {/* Hemisphere */}
+      <ellipse cx="200" cy="170" rx="50" ry="17" fill="#d1fae5" stroke="#16a34a" strokeWidth="2"/>
+      <path d="M150 170 Q150 110 200 110 Q250 110 250 170" fill="#a7f3d0" stroke="#16a34a" strokeWidth="2"/>
+      <text x="200" y="250" textAnchor="middle" fontSize="12" fill="#14532d">Cube</text>
+      <text x="200" y="105" textAnchor="middle" fontSize="12" fill="#14532d">Hemisphere</text>
+    </g>
+  ),
+  1: ({ r }) => (
+    <g>
+      <rect x="130" y="170" width="140" height="140" fill="#f0fdf4" stroke="#16a34a" strokeWidth="2"/>
+      <polygon points="130,170 170,130 310,130 270,170" fill="#dcfce7" stroke="#16a34a" strokeWidth="2"/>
+      <polygon points="270,170 310,130 310,270 270,310" fill="#bbf7d0" stroke="#16a34a" strokeWidth="2"/>
+      <ellipse cx="200" cy="170" rx="50" ry="17" fill="#d1fae5" stroke="#16a34a" strokeWidth="2"/>
+      <path d="M150 170 Q150 110 200 110 Q250 110 250 170" fill="#a7f3d0" stroke="#16a34a" strokeWidth="2"/>
+      <line x1="200" y1="170" x2="250" y2="170" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
+      <text x="225" y="165" fontSize="13" fill="#dc2626" fontWeight="bold">r = {r ?? 'r'}</text>
+    </g>
+  ),
+}
+
+// Frustum of a cone (drinking glass / bucket shape)
+const frustumStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
+  0: () => (
+    <g>
+      {/* Frustum body */}
+      <polygon points="150,80 250,80 290,310 110,310" fill="#ede9fe" stroke="#7c3aed" strokeWidth="2"/>
+      <ellipse cx="200" cy="80" rx="50" ry="16" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
+      <ellipse cx="200" cy="310" rx="90" ry="28" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
+      <text x="200" y="200" textAnchor="middle" fontSize="12" fill="#4c1d95">Frustum of cone</text>
+      {/* Label r1, r2, h */}
+      <text x="155" y="74" fontSize="11" fill="#5b21b6">r₁</text>
+      <text x="295" y="315" fontSize="11" fill="#5b21b6">r₂</text>
+    </g>
+  ),
+  1: ({ r }) => (
+    <g>
+      <polygon points="150,80 250,80 290,310 110,310" fill="#ede9fe" stroke="#7c3aed" strokeWidth="2"/>
+      <ellipse cx="200" cy="80" rx="50" ry="16" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
+      <ellipse cx="200" cy="310" rx="90" ry="28" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
+      {/* Height annotation */}
+      <line x1="105" y1="80" x2="105" y2="310" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
+      <text x="88" y="200" fontSize="13" fill="#dc2626" fontWeight="bold">h</text>
+      {/* r1 top */}
+      <line x1="200" y1="80" x2="250" y2="80" stroke="#2563eb" strokeWidth="1.5" strokeDasharray="4 2"/>
+      <text x="222" y="72" fontSize="12" fill="#2563eb" fontWeight="bold">r₁</text>
+      {/* r2 bottom */}
+      <line x1="200" y1="310" x2="290" y2="310" stroke="#16a34a" strokeWidth="1.5" strokeDasharray="4 2"/>
+      <text x="242" y="328" fontSize="12" fill="#16a34a" fontWeight="bold">r₂</text>
+    </g>
+  ),
+}
+
+// Frustum + cylinder (metal bucket with handle)
+const frustumCylinderStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
+  0: () => (
+    <g>
+      {/* Cylinder at top */}
+      <rect x="150" y="60" width="100" height="60" fill="#fef9c3" stroke="#ca8a04" strokeWidth="2"/>
+      <ellipse cx="200" cy="60" rx="50" ry="16" fill="#fef08a" stroke="#ca8a04" strokeWidth="2"/>
+      <ellipse cx="200" cy="120" rx="50" ry="16" fill="#fef08a" stroke="#ca8a04" strokeWidth="2"/>
+      {/* Frustum below */}
+      <polygon points="150,120 250,120 290,310 110,310" fill="#ede9fe" stroke="#7c3aed" strokeWidth="2"/>
+      <ellipse cx="200" cy="310" rx="90" ry="28" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
+      <text x="200" y="90" textAnchor="middle" fontSize="11" fill="#78350f">Cylinder</text>
+      <text x="200" y="230" textAnchor="middle" fontSize="11" fill="#4c1d95">Frustum</text>
+    </g>
+  ),
+  1: ({ r }) => (
+    <g>
+      <rect x="150" y="60" width="100" height="60" fill="#fef9c3" stroke="#ca8a04" strokeWidth="2"/>
+      <ellipse cx="200" cy="60" rx="50" ry="16" fill="#fef08a" stroke="#ca8a04" strokeWidth="2"/>
+      <ellipse cx="200" cy="120" rx="50" ry="16" fill="#fef08a" stroke="#ca8a04" strokeWidth="2"/>
+      <polygon points="150,120 250,120 290,310 110,310" fill="#ede9fe" stroke="#7c3aed" strokeWidth="2"/>
+      <ellipse cx="200" cy="310" rx="90" ry="28" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
+      {/* Slant height */}
+      <line x1="250" y1="120" x2="290" y2="310" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
+      <text x="285" y="215" fontSize="12" fill="#dc2626" fontWeight="bold">l</text>
+    </g>
+  ),
+}
+
+// Cylinder with hemispherical base (juice glass / goblet)
+const cylinderBaseHemisphereStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
+  0: () => (
+    <g>
+      {/* Cylinder body */}
+      <rect x="150" y="100" width="100" height="160" fill="#f0f9ff" stroke="#0284c7" strokeWidth="2"/>
+      <ellipse cx="200" cy="100" rx="50" ry="16" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2"/>
+      {/* Hemispherical bottom depression */}
+      <path d="M150 260 Q150 310 200 310 Q250 310 250 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      <text x="200" y="185" textAnchor="middle" fontSize="12" fill="#0c4a6e">Cylinder</text>
+      <text x="200" y="325" textAnchor="middle" fontSize="11" fill="#0c4a6e">Hemispherical base</text>
+    </g>
+  ),
+  1: ({ r }) => (
+    <g>
+      <rect x="150" y="100" width="100" height="160" fill="#f0f9ff" stroke="#0284c7" strokeWidth="2"/>
+      <ellipse cx="200" cy="100" rx="50" ry="16" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2"/>
+      <path d="M150 260 Q150 310 200 310 Q250 310 250 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
+      <line x1="200" y1="260" x2="250" y2="260" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
+      <text x="228" y="256" fontSize="13" fill="#dc2626" fontWeight="bold">r = {r ?? 'r'}</text>
+    </g>
+  ),
+}
+
+
 export function GuidedDiagram({ stage, problemComplete = false, className = '', config }: GuidedDiagramProps) {
   const resolvedConfig = config ?? DEFAULT_CONFIG
   const problemType = resolvedConfig.problemType ?? 'segment'
 
   const stageMap =
-    problemType === 'sector'      ? sectorStages :
-    problemType === 'arc'         ? arcStages :
-    problemType === 'combination'      ? combinationStages :
-    problemType === 'circles-in-square' ? circlesInSquareStages :
-    problemType === 'mirror'      ? mirrorStages :
-    problemType === 'lens'        ? lensStages :
+    problemType === 'sector'                 ? sectorStages :
+    problemType === 'arc'                    ? arcStages :
+    problemType === 'combination'            ? combinationStages :
+    problemType === 'circles-in-square'      ? circlesInSquareStages :
+    problemType === 'mirror'                 ? mirrorStages :
+    problemType === 'lens'                   ? lensStages :
+    problemType === 'cylinder-hemispheres'   ? cylinderHemispheresStages :
+    problemType === 'hemisphere-cone'        ? hemisphereConeStages :
+    problemType === 'cube-hemisphere'        ? cubeHemisphereStages :
+    problemType === 'cylinder-base-hemisphere' ? cylinderBaseHemisphereStages :
+    problemType === 'frustum'                ? frustumStages :
+    problemType === 'frustum-cylinder'       ? frustumCylinderStages :
+    // 'none' or 'segment' — fall through to segment (segment handles unknown)
     segmentStages
 
   const maxStage = Object.keys(stageMap).length - 1

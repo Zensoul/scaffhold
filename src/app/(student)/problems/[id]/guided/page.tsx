@@ -30,6 +30,7 @@ type GuidedStep = {
   svgStage: number
   options: StepOption[]
   formulaCard: string | null
+  unit: string | null
   hintText: string | null
   hintText2: string | null
   hintText3: string | null
@@ -56,7 +57,7 @@ type ProblemInfo = {
     r: number
     theta: number
     isMajorSegment?: boolean
-    problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' | 'none'
+    problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' | 'cylinder-hemispheres' | 'hemisphere-cone' | 'cube-hemisphere' | 'cylinder-base-hemisphere' | 'frustum' | 'frustum-cylinder' | 'none'
   }
 }
 
@@ -813,7 +814,7 @@ export default function GuidedPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSocraticSubmitted(true)}
-                  disabled={socraticText.trim().length < 3}
+                  disabled={socraticText.trim().split(/\s+/).filter(Boolean).length < 5}
                   className="inline-flex items-center gap-2 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 transition-colors"
                 >
                   Done thinking — show me the options
@@ -998,7 +999,9 @@ export default function GuidedPage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 className="max-w-[220px]"
               />
-              <span className="text-sm text-muted-foreground self-center">cm²</span>
+              <span className="text-sm text-muted-foreground self-center">
+                {step.unit ?? 'cm²'}
+              </span>
             </div>
           )}
 
@@ -1043,12 +1046,15 @@ export default function GuidedPage() {
             </div>
           )}
 
-          {/* ── Self-explain MCQ (shown after worked example) ─────────────── */}
-          {activeSelfExplain && showWorkedExamplePanel && (
+
+          {/* ── Self-explain gate (fires after student views worked example) ───── */}
+          {/* Research: Chi et al. — self-explanation must happen while PROCESSING  */}
+          {/* the example, before the next attempt, not after seeing the answer.    */}
+          {activeSelfExplain && hasViewedWorkedExample && !selfExplainDone && (
             <div className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-4 space-y-3">
               <div className="flex items-center gap-2">
                 <HelpCircle className="w-4 h-4 text-purple-600 shrink-0" />
-                <p className="text-sm font-semibold text-purple-800">Reflect:</p>
+                <p className="text-sm font-semibold text-purple-800">Before your next attempt — reflect:</p>
               </div>
               <p className="text-sm text-purple-700">{activeSelfExplain.prompt}</p>
 
@@ -1056,7 +1062,7 @@ export default function GuidedPage() {
               {!selfExplainSubmitted ? (
                 <div className="space-y-2">
                   <textarea
-                    className="w-full rounded-md border border-purple-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    className="w-full rounded-md border border-purple-300 bg-white px-3 py-2 text-sm placeholder:text-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
                     rows={3}
                     placeholder="Write your explanation here (at least 8 words)…"
                     value={selfExplainText}
@@ -1066,51 +1072,38 @@ export default function GuidedPage() {
                     size="sm"
                     onClick={() => setSelfExplainSubmitted(true)}
                     disabled={selfExplainText.trim().split(/\s+/).filter(Boolean).length < 8}
-                    className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40"
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
                   >
-                    See model answer
+                    See model explanation
                   </Button>
-                  {(() => {
-                    const wc = selfExplainText.trim().split(/\s+/).filter(Boolean).length
-                    const remaining = Math.max(0, 8 - wc)
-                    if (remaining === 0) return null
-                    return (
-                      <p className="text-xs text-purple-400">
-                        {remaining} more word{remaining === 1 ? '' : 's'} needed
-                      </p>
-                    )
-                  })()}
                 </div>
               ) : (
+                /* Phase 2: student sees model answer then self-assesses */
                 <div className="space-y-3">
-                  {/* Student's own explanation */}
-                  <div className="rounded-md border border-purple-100 bg-purple-50 px-3 py-2 text-sm text-purple-900">
-                    <span className="font-semibold text-purple-600 block mb-1">Your explanation:</span>
-                    {selfExplainText}
+                  <div className="rounded-md border border-purple-200 bg-white px-3 py-2 space-y-1">
+                    <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Your explanation</p>
+                    <p className="text-sm text-gray-700 italic">{selfExplainText}</p>
                   </div>
-
-                  {/* Model answer now revealed */}
-                  <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-                    <span className="font-semibold text-blue-700 block mb-1">Model answer:</span>
-                    {activeSelfExplain.answer}
+                  <div className="rounded-md border border-purple-300 bg-purple-100 px-3 py-2 space-y-1">
+                    <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Model explanation</p>
+                    <p className="text-sm text-purple-900">{activeSelfExplain.answer}</p>
                   </div>
-
-                  <p className="text-xs text-purple-600 font-medium">How well does your explanation match?</p>
+                  <p className="text-sm font-medium text-purple-800">Did your explanation match?</p>
                   {selfExplainResult === null ? (
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setSelfExplainResult('Yes')} className="border-green-300 text-green-700 hover:bg-green-50">Yes</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setSelfExplainResult('Yes'); setSelfExplainDone(true) }} className="border-green-300 text-green-700 hover:bg-green-50">Yes</Button>
                       <Button size="sm" variant="outline" onClick={() => setSelfExplainResult('Somewhat')} className="border-amber-300 text-amber-700 hover:bg-amber-50">Somewhat</Button>
                       <Button size="sm" variant="outline" onClick={() => setSelfExplainResult('No')} className="border-red-300 text-red-700 hover:bg-red-50">No</Button>
                     </div>
                   ) : selfExplainResult === 'Yes' ? (
                     <div className="rounded-md px-3 py-2 text-sm bg-green-50 border border-green-200 text-green-800">
-                      ✓ Solid understanding.
+                      ✓ Solid understanding. You can now retry the problem.
                     </div>
                   ) : (
                     /* Somewhat / No — show follow-up question */
                     <div className="space-y-3">
                       <div className={`rounded-md px-3 py-2 text-sm ${selfExplainResult === 'Somewhat' ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-red-50 border border-red-200 text-red-800'}`}>
-                        {selfExplainResult === 'Somewhat' ? "👍 Good effort — let’s do one quick check." : "📖 Let’s reinforce this with one more question."}
+                        {selfExplainResult === 'Somewhat' ? "👍 Good effort — let's do one quick check." : "📖 Let's reinforce this with one more question."}
                       </div>
                       {activeSelfExplain?.followUp && followUpResult === null && (
                         <div className="rounded-md border border-purple-200 bg-white px-3 py-3 space-y-2">
@@ -1163,13 +1156,17 @@ export default function GuidedPage() {
                           Not quite. The answer is <strong>{activeSelfExplain?.followUp?.answer}</strong>. Review the model answer above before continuing.
                         </div>
                       )}
+                      {(followUpResult !== null) && (
+                        <Button size="sm" onClick={() => setSelfExplainDone(true)} className="bg-purple-600 hover:bg-purple-700 text-white">
+                          Continue to retry
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
               )}
             </div>
           )}
-        </div>
 
         {/* Submit button */}
         <div className="border-t px-6 py-4 bg-white">
@@ -1184,6 +1181,7 @@ export default function GuidedPage() {
               submitting ||
               correctFlash ||
               !confidenceGatePassed ||
+              (activeSelfExplain && hasViewedWorkedExample && !selfExplainDone) ||
               (step.inputType === 'mcq' ? !selectedOption : !numericAnswer.trim())
             }
             className="w-full sm:w-auto"

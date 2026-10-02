@@ -56,8 +56,8 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ message: 'If that email exists, a reset link has been sent.' })
-  } catch (err) {
+  } catch (err: any) {
     console.error('[forgot-password]', err)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', detail: err?.message ?? String(err) }, { status: 500 })
   }
 }

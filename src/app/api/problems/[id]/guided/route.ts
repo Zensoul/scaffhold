@@ -12,14 +12,6 @@ type StepOption = {
   optionText: string
   orderIndex: number
 }
-type PrerequisiteSupport = {
-  skill: string
-  explanation: string
-  easierExample: string
-  checkPrompt: string
-  checkAnswer: string
-  checkTolerance: number
-}
 
 type GuidedStepResponse = {
   stepId: string
@@ -29,54 +21,17 @@ type GuidedStepResponse = {
   prompt: string
   inputType: 'mcq' | 'numeric'
   svgStage: number
-  options: StepOption[]
-  // Formula card — always visible on the left panel regardless of attempt count
-  formulaCard: string | null
-  // 3-level progressive hints
-  hintText: string | null       // contextual — available on request or after a wrong answer
-  hintText2: string | null      // procedural  — after ≥2 wrong
-  hintText3: string | null      // bottom-out  — after ≥3 wrong
+  options: StepOption[]       // empty array for numeric steps
+  hintText: string | null     // only sent after ≥1 wrong attempt on this step
   hintWasRephrased: boolean
-  errorFeedback: string | null  // only sent after a wrong attempt
-  // Worked example — available on demand and auto-opened after two wrong attempts when authored.
+  errorFeedback: string | null // only sent after a wrong attempt
   workedExample: {
     text: string
     svgStage: number
-  } | null
-  // Self-explain MCQ — shown after worked example is revealed
-  selfExplain: {
-    prompt: string
-    answer: string
-    followUp: { prompt: string; answer: string; inputType: string; tolerance: number } | null
-  } | null
-  // Adaptive error type — helps frontend show targeted nudge
-  errorType: 'formula' | 'substitution' | 'arithmetic' | null
-  attemptCount: number
-  // Concept enrichment — only on concept steps
-  conceptVideoUrl: string | null   // animation explaining WHY this concept applies
-  socraticPrompt: string | null    // think-first question before MCQ attempt
-  prerequisiteSupport: PrerequisiteSupport | null
-}
-
-// ─── Adaptive error classification ───────────────────────────────────────────
-// Classifies a wrong numeric answer into a likely error type so the frontend
-// can surface a more targeted nudge without changing the hint text itself.
-
-function classifyNumericError(
-  studentAnswer: string,
-  correctAnswer: string,
-  stepType: string,
-): 'formula' | 'substitution' | 'arithmetic' {
-  const correct = parseFloat(correctAnswer)
-  const student = parseFloat(studentAnswer)
-  if (isNaN(student)) return 'formula'
-  const ratio = student / correct
-  // If ratio is close to 2, 0.5, 4, 0.25 — likely forgot to square r
-  if (Math.abs(ratio - 0.5) < 0.05 || Math.abs(ratio - 2) < 0.1) return 'substitution'
-  // If ratio is close to 1 (within 20%) — arithmetic slip
-  if (Math.abs(ratio - 1) < 0.2) return 'arithmetic'
-  // Large deviation — likely wrong formula or wrong operation
-  return stepType === 'computation' ? 'arithmetic' : 'formula'
+  } | null                    // only sent after ≥3 wrong attempts
+  attemptCount: number        // how many times this student has tried this step
+  totalSteps: number
+  answeredSoFar: number       // how many steps the student has completed correctly
 }
 
 // ─── GET /api/problems/[id]/guided?sessionId= ────────────────────────────────
@@ -118,7 +73,7 @@ export async function GET(
         orderBy: { sequenceOrder: 'asc' },
         include: { options: { orderBy: { orderIndex: 'asc' } } },
       },
-      problem: { select: { isActive: true, rawText: true, concreteRestatement: true, givens: true, impliedGivens: true, unknownAnnotation: true } },
+      problem: { select: { isActive: true, rawText: true, concreteRestatement: true, givens: true } },
     },
   })
 
@@ -132,33 +87,17 @@ export async function GET(
   const thetaMatch = rawTextLC.match(/angle[^0-9]*([0-9]+)/)
 
   // Determine problem type for diagram selection
-  // Only use a visual diagram when the problem is actually one the renderer supports.
-  // Defaulting to `segment` made algebra/statistics problems show a misleading circle.
-  let problemType: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' | 'none' = 'none'
-  if (rawTextLC.includes('mirror') || (rawTextLC.includes('focal length') && !rawTextLC.includes('lens'))) {
-    // Spherical mirror problems: mirror formula, magnification, focal length from R
-    problemType = 'mirror'
-  } else if (rawTextLC.includes('lens') || rawTextLC.includes('refract') || rawTextLC.includes('snell')) {
-    // Refraction / lens problems: lens formula, snell's law, power of lens
-    problemType = 'lens'
-  } else if (rawTextLC.includes('arc') && rawTextLC.includes('length')) {
+  let problemType: 'sector' | 'arc' | 'segment' | 'combination' = 'segment'
+  if (rawTextLC.includes('arc') && rawTextLC.includes('length')) {
     problemType = 'arc'
-  } else if (rawTextLC.includes('brooch') || (rawTextLC.includes('semicircle') && rawTextLC.includes('perimeter'))) {
-    // Semicircle perimeter / brooch = arc length problem (arc + diameter)
-    problemType = 'arc'
-  } else if (rawTextLC.includes('area of a sector') || rawTextLC.includes('area of the sector') || rawTextLC.includes('horse')) {
+  } else if (rawTextLC.includes('area of a sector') || rawTextLC.includes('area of the sector')) {
     problemType = 'sector'
   } else if (
-    // circles fitting into corners of a square — square with 4 quarter-circles at corners
-    (rawTextLC.includes('circle') && rawTextLC.includes('square') && rawTextLC.includes('touching')) ||
-    (rawTextLC.includes('four circles') && rawTextLC.includes('square')) ||
-    (rawTextLC.includes('circles') && rawTextLC.includes('corner') && rawTextLC.includes('square'))
-  ) {
-    problemType = 'circles-in-square'
-  } else if (
+    rawTextLC.includes('square') ||
+    rawTextLC.includes('horse') ||
+    rawTextLC.includes('brooch') ||
     rawTextLC.includes('semicircle') ||
-    (rawTextLC.includes('inscribed') && rawTextLC.includes('circle')) ||
-    (rawTextLC.includes('square') && rawTextLC.includes('circle'))
+    rawTextLC.includes('inscribed')
   ) {
     problemType = 'combination'
   } else if (rawTextLC.includes('segment') || rawTextLC.includes('chord')) {
@@ -175,22 +114,6 @@ export async function GET(
   const problemInfo = {
     rawText: guidedProblem.problem.rawText,
     concreteRestatement: guidedProblem.problem.concreteRestatement,
-    givens: (() => {
-      const raw = guidedProblem.problem.givens
-      if (Array.isArray(raw)) return raw as string[]
-      if (raw && typeof raw === 'object') {
-        // Physics problems store givens as {u: '30 cm in front', f: '15 cm (concave)'}
-        // Convert to labelled strings so the comprehension quiz has meaningful distractors
-        return Object.entries(raw as Record<string, string>).map(([k, v]) => `${k} = ${v}`)
-      }
-      return [] as string[]
-    })(),
-    impliedGivens: (() => {
-      const raw = guidedProblem.problem.impliedGivens
-      if (Array.isArray(raw)) return raw as string[]
-      return [] as string[]
-    })(),
-    unknownAnnotation: guidedProblem.problem.unknownAnnotation,
     diagramConfig,
   }
 
@@ -215,6 +138,7 @@ export async function GET(
 
   // If all steps are done, return completed state
   if (answeredSoFar >= totalSteps) {
+    // Ensure a sessionInteraction record exists so selectNextProblem skips this problem
     const existing = await prisma.sessionInteraction.findFirst({
       where: { studentId, sessionId, problemId: id, interactionType: InteractionType.problem_completed },
     })
@@ -246,28 +170,9 @@ export async function GET(
     where: { studentId, stepId: nextStep.id, isCorrect: false },
   })
 
-  // ── 3-level progressive hints ──────────────────────────────────────────────
-  const hintText  = nextStep.hintText
-  const hintText2 = attemptCount >= 2 ? (nextStep.hintText2 ?? null) : null
-  const hintText3 = attemptCount >= 3 ? (nextStep.hintText3 ?? null) : null
-
-  // ── Worked example always available on demand — UI controls visibility
-  const isConcept = nextStep.stepType === 'concept'
-  const showWorkedExample = nextStep.workedExampleText != null
-
-  // ── Self-explain only shown once worked example is visible ─────────────────
-  const showSelfExplain = showWorkedExample && nextStep.selfExplainPrompt != null
-  const prerequisiteSupport = attemptCount >= 2 && nextStep.prerequisiteSkill && nextStep.prerequisiteExplanation &&
-    nextStep.prerequisiteExample && nextStep.prerequisiteCheckPrompt && nextStep.prerequisiteCheckAnswer
-    ? {
-        skill: nextStep.prerequisiteSkill,
-        explanation: nextStep.prerequisiteExplanation,
-        easierExample: nextStep.prerequisiteExample,
-        checkPrompt: nextStep.prerequisiteCheckPrompt,
-        checkAnswer: nextStep.prerequisiteCheckAnswer,
-        checkTolerance: nextStep.prerequisiteCheckTolerance ?? 0,
-      }
-    : null
+  const showHint = attemptCount >= 1
+  const showWorkedExample =
+    attemptCount >= 3 && nextStep.workedExampleText != null
 
   return NextResponse.json({
     problemComplete: false,
@@ -287,12 +192,9 @@ export async function GET(
         optionText: o.optionText,
         orderIndex: o.orderIndex,
       })),
-      formulaCard: nextStep.formulaCard ?? null,
-      hintText,
-      hintText2,
-      hintText3,
+      hintText: showHint ? nextStep.hintText : null,
       hintWasRephrased: false,
-      errorFeedback: null,
+      errorFeedback: null,   // only included in POST response after a wrong answer
       workedExample:
         showWorkedExample
           ? {
@@ -300,32 +202,14 @@ export async function GET(
               svgStage: nextStep.workedExampleSvgStage ?? nextStep.svgStage,
             }
           : null,
-      selfExplain:
-        showSelfExplain
-          ? {
-              prompt: nextStep.selfExplainPrompt!,
-              answer: nextStep.selfExplainAnswer!,
-              followUp: nextStep.followUpPrompt
-                ? {
-                    prompt: nextStep.followUpPrompt,
-                    answer: nextStep.followUpAnswer!,
-                    inputType: nextStep.followUpInputType ?? 'numeric',
-                    tolerance: nextStep.followUpTolerance ?? 0,
-                  }
-                : null,
-            }
-          : null,
-      errorType: null,
       attemptCount,
-      prerequisiteSupport,
-      conceptVideoUrl: nextStep.stepType === 'concept' ? (nextStep.conceptVideoUrl ?? null) : null,
-      socraticPrompt: nextStep.stepType === 'concept' ? (nextStep.socraticPrompt ?? null) : null,
     } satisfies GuidedStepResponse,
   })
 }
 
 // ─── POST /api/problems/[id]/guided ──────────────────────────────────────────
 // Body: { sessionId, stepId, answer }
+//   answer is either an MCQ option text (string) or a numeric string
 
 export async function POST(
   request: NextRequest,
@@ -382,19 +266,13 @@ export async function POST(
 
   // Grade the answer
   let isCorrect: boolean
-  let numericFormatError = false
   if (step.inputType === 'numeric') {
-    // Require the entire response to be a number. parseFloat alone accepts
-    // values such as "12abc", which can incorrectly mark an answer correct.
-    const numericAnswerPattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i
-    const normalizedAnswer = answer.trim()
-    const hasValidNumericFormat = numericAnswerPattern.test(normalizedAnswer)
-    numericFormatError = !hasValidNumericFormat
-    const studentNum = hasValidNumericFormat ? Number(normalizedAnswer) : NaN
-    const correctNum = Number(step.correctAnswer.trim())
+    const studentNum = parseFloat(answer.trim())
+    const correctNum = parseFloat(step.correctAnswer)
     const tol = step.tolerance ?? 0.01
-    isCorrect = Number.isFinite(studentNum) && Number.isFinite(correctNum) && Math.abs(studentNum - correctNum) <= tol
+    isCorrect = !isNaN(studentNum) && Math.abs(studentNum - correctNum) <= tol
   } else {
+    // MCQ — case-insensitive exact match on text
     isCorrect = answer.trim().toLowerCase() === step.correctAnswer.trim().toLowerCase()
   }
 
@@ -418,6 +296,8 @@ export async function POST(
   })
 
   if (isCorrect) {
+    // Check if all steps are now complete — if so, record a sessionInteraction
+    // so selectNextProblem knows this problem has been attempted.
     const guidedProblem = await prisma.guidedSolveProblem.findUnique({
       where: { problemId: id },
       include: { steps: { select: { id: true } } },
@@ -428,6 +308,7 @@ export async function POST(
         where: { studentId, sessionId, isCorrect: true, stepId: { in: allStepIds } },
       })
       if (correctCount >= allStepIds.length) {
+        // All steps done — mark this problem as completed in sessionInteraction
         const existing = await prisma.sessionInteraction.findFirst({
           where: { studentId, sessionId, problemId: id, interactionType: InteractionType.problem_completed },
         })
@@ -448,44 +329,15 @@ export async function POST(
     return NextResponse.json({ isCorrect: true })
   }
 
-  // ── Wrong answer — build progressive feedback ──────────────────────────────
+  // Wrong answer — build feedback
   const newWrongCount = priorWrong + 1
-
-  // 3-level hints
-  const hintText  = newWrongCount >= 1 ? step.hintText : null
-  const hintText2 = newWrongCount >= 2 ? (step.hintText2 ?? null) : null
-  const hintText3 = newWrongCount >= 3 ? (step.hintText3 ?? null) : null
-
-  // Bring authored review support forward after two unsuccessful attempts.
-  const showWorkedExample = newWrongCount >= 2 && step.workedExampleText != null
-  const showSelfExplain = showWorkedExample && step.selfExplainPrompt != null
-  const prerequisiteSupport = newWrongCount >= 2 && step.prerequisiteSkill && step.prerequisiteExplanation &&
-    step.prerequisiteExample && step.prerequisiteCheckPrompt && step.prerequisiteCheckAnswer
-    ? {
-        skill: step.prerequisiteSkill,
-        explanation: step.prerequisiteExplanation,
-        easierExample: step.prerequisiteExample,
-        checkPrompt: step.prerequisiteCheckPrompt,
-        checkAnswer: step.prerequisiteCheckAnswer,
-        checkTolerance: step.prerequisiteCheckTolerance ?? 0,
-      }
-    : null
-
-  // Adaptive error type classification for numeric steps
-  const errorType =
-    step.inputType === 'numeric'
-      ? classifyNumericError(answer, step.correctAnswer, step.stepType)
-      : null
+  const showHint = newWrongCount >= 1
+  const showWorkedExample = newWrongCount >= 3 && step.workedExampleText != null
 
   return NextResponse.json({
     isCorrect: false,
-    errorFeedback: numericFormatError
-      ? 'Enter a number only. Leave out words and units; the question shows the unit.'
-      : step.errorFeedback,
-    errorType,
-    hintText,
-    hintText2,
-    hintText3,
+    errorFeedback: step.errorFeedback,
+    hintText: showHint ? step.hintText : null,
     workedExample:
       showWorkedExample
         ? {
@@ -493,22 +345,6 @@ export async function POST(
             svgStage: step.workedExampleSvgStage ?? step.svgStage,
           }
         : null,
-    selfExplain:
-      showSelfExplain
-        ? {
-            prompt: step.selfExplainPrompt!,
-            answer: step.selfExplainAnswer!,
-            followUp: step.followUpPrompt
-              ? {
-                  prompt: step.followUpPrompt,
-                  answer: step.followUpAnswer!,
-                  inputType: step.followUpInputType ?? 'numeric',
-                  tolerance: step.followUpTolerance ?? 0,
-                }
-              : null,
-          }
-        : null,
     attemptCount: newWrongCount,
-    prerequisiteSupport,
   })
 }

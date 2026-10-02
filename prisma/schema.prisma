@@ -37,6 +37,7 @@ model User {
   parentSummaries        ParentSummary[]      @relation("ParentSummaries")
   studentSummaries       ParentSummary[]      @relation("StudentParentSummaries")
   chapterAssignmentsMade ChapterAssignment[]  @relation("ChapterAssigner")
+  passwordResetTokens    PasswordResetToken[]
 
   @@map("users")
 }
@@ -630,11 +631,14 @@ enum InputType {
 }
 
 model GuidedSolveProblem {
-  id        String      @id @default(uuid())
-  problemId String      @unique
-  problem   Problem     @relation(fields: [problemId], references: [id])
-  steps     SolveStep[]
-  createdAt DateTime    @default(now())
+  id         String      @id @default(uuid())
+  problemId  String      @unique
+  problem    Problem     @relation(fields: [problemId], references: [id])
+  steps      SolveStep[]
+  /// Scaffold fading level: 3 = full hints (early problems), 2 = medium, 1 = minimal (later problems).
+  /// Research: Renkl faded worked examples — gradually reduce support as chapter progresses.
+  hintLevel  Int         @default(3)
+  createdAt  DateTime    @default(now())
 
   @@map("guided_solve_problems")
 }
@@ -656,6 +660,7 @@ model SolveStep {
   errorFeedback         String             // Shown immediately on a wrong answer
   formulaCard           String?            // Always-visible formula reference on left panel
   svgStage              Int                // Which SVG stage to show for this step (0-7)
+  unit                  String?            // Display unit for numeric answer input (e.g. 'cm²', 'cm³', 'm', 'cm')
   workedExampleText     String?            // Worked example available on demand; auto-opened after 2 wrong answers
   workedExampleSvgStage Int?               // SVG stage for the worked example panel
   selfExplainPrompt     String?            // Reflection prompt shown after worked example
@@ -703,4 +708,18 @@ model SolveAttempt {
 
   @@index([studentId, stepId, createdAt])
   @@map("solve_attempts")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("password_reset_tokens")
 }

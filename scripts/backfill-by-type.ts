@@ -21,10 +21,12 @@ const prisma = new PrismaClient()
 
 // Same weighting used by the live updateScaffoldingLevel() function --
 // keep these two in sync (see lib/scaffolding/update-level.ts).
+// Kept in sync with src/lib/scaffolding/update-level.ts -- see that
+// file's comment for why 'given'/'implied_given' are zeroed.
 const COMPOSITE_WEIGHTS: Record<FadeAnnotationType, number> = {
-  unknown: 0.5,
-  implied_given: 0.3,
-  given: 0.2,
+  unknown: 1.0,
+  implied_given: 0,
+  given: 0,
 }
 
 // Simple recency-weighted level estimate from a chronological sequence
