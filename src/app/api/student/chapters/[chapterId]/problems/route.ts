@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db/prisma'
 import { getCurrentStudentId } from '@/lib/session/auth-stub'
 import { selectNextProblem } from '@/lib/scaffolding/adaptive-sequencing'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ chapterId: string }> }
