@@ -188,8 +188,8 @@ function ComprehensionQuiz({
       return `the ${label}`
     }
     const s = given
-      .replace(/\s*=\s*[\d°π/.,\s\w²³]*$/, '')
-      .replace(/\s+\bis\b\s+[\d°π²³/.,][\d°π²³/.,\s\w]*$/i, '')
+      .replace(/\s*=\s*[\d°π\/.,\s\w²³]*$/, '')
+      .replace(/\s+\bis\b\s+[\d°π²³\/.,][\d°π²³\/.,\s\w]*$/i, '')
       .replace(/\b\d+([.,]\d+)?\s*(cm²|cm|mm²|mm|m²|km|m|°|π|%)?\b/g, '')
       .replace(/^(the|a|an)\s+/i, '')
       .replace(/[,.:;!?]+$/, '')
