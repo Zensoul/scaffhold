@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { GuidedDiagram } from '@/components/guided-diagram'
 import { CheckCircle, XCircle, Lightbulb, BookOpen, ArrowRight, FileText, HelpCircle } from 'lucide-react'
+import { toConceptPhrase, wordCount, isValidNumeric } from '@/lib/guided-utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -171,33 +172,6 @@ function ComprehensionQuiz({
   // Build unknown choices: correct unknown + concept-only distractors
   // Strip numbers/units from givens so distractors don't reveal values or look like answers.
   // All choices use the same format as unknownAnnotation (no "Find" prefix).
-  function toConceptPhrase(given: string): string {
-    // "The radius of the circle is 21 cm" → "the radius of the circle"
-    // "Central angle = 60°" → "the central angle"
-    // "f = 15 cm (concave)"  → "the focal length" (physics key)
-    // "u = 30 cm in front"  → "the object distance"
-    const PHYSICS_KEY_LABELS: Record<string, string> = {
-      u: 'object distance', v: 'image distance', f: 'focal length',
-      R: 'radius of curvature', m: 'magnification', n: 'refractive index',
-      c: 'speed of light in vacuum', i: 'angle of incidence', r: 'angle of refraction',
-    }
-    // Handle physics "key = value" format produced by object-givens normalisation
-    const physicsMatch = given.match(/^([a-zA-Z])\s*=\s*(.+)$/)
-    if (physicsMatch) {
-      const label = PHYSICS_KEY_LABELS[physicsMatch[1]] ?? physicsMatch[1]
-      return `the ${label}`
-    }
-    const s = given
-      .replace(/\s*=\s*[\d°π\/.,\s\w²³]*$/, '')
-      .replace(/\s+\bis\b\s+[\d°π²³\/.,][\d°π²³\/.,\s\w]*$/i, '')
-      .replace(/\b\d+([.,]\d+)?\s*(cm²|cm|mm²|mm|m²|km|m|°|π|%)?\b/g, '')
-      .replace(/^(the|a|an)\s+/i, '')
-      .replace(/[,.:;!?]+$/, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim()
-      .toLowerCase()
-    return s ? `the ${s}` : given.toLowerCase()
-  }
   const unknownDistractors = [
     ...allGivens.slice(0, 2).map(toConceptPhrase),
     'the perimeter of the figure',
@@ -426,6 +400,8 @@ export default function GuidedPage() {
   // Self-explain text input + model answer reveal
   const [selfExplainText, setSelfExplainText] = useState<string>('')
   const [selfExplainSubmitted, setSelfExplainSubmitted] = useState<boolean>(false)
+  const [selfExplainDone, setSelfExplainDone] = useState<boolean>(false)
+  const [hasViewedWorkedExample, setHasViewedWorkedExample] = useState<boolean>(false)
   const [followUpAnswer, setFollowUpAnswer] = useState<string>('')
   const [followUpResult, setFollowUpResult] = useState<'correct' | 'wrong' | null>(null)
   const [prerequisiteCheckAnswer, setPrerequisiteCheckAnswer] = useState('')
@@ -465,6 +441,8 @@ export default function GuidedPage() {
     setSelfExplainResult(null)
     setSelfExplainText('')
     setSelfExplainSubmitted(false)
+    setSelfExplainDone(false)
+    setHasViewedWorkedExample(false)
     setFollowUpAnswer('')
     setFollowUpResult(null)
     setPrerequisiteCheckAnswer('')
@@ -568,8 +546,8 @@ export default function GuidedPage() {
   function checkPrerequisiteAnswer() {
     if (!activePrerequisiteSupport || !prerequisiteCheckAnswer.trim()) return
     const rawAnswer = prerequisiteCheckAnswer.trim()
-    const numericPattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i
-    const studentNumber = numericPattern.test(rawAnswer) ? Number(rawAnswer) : NaN
+    // numericPattern moved to guided-utils
+    const studentNumber = isValidNumeric(rawAnswer) ? Number(rawAnswer) : NaN
     const expectedNumber = Number(activePrerequisiteSupport.checkAnswer)
     const isCorrect = Number.isFinite(studentNumber) && Number.isFinite(expectedNumber) &&
       Math.abs(studentNumber - expectedNumber) <= activePrerequisiteSupport.checkTolerance
@@ -814,7 +792,7 @@ export default function GuidedPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSocraticSubmitted(true)}
-                  disabled={socraticText.trim().split(" ").filter(Boolean).length < 5}
+                  disabled={wordCount(socraticText) < 5}
                   className="inline-flex items-center gap-2 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 transition-colors"
                 >
                   Done thinking — show me the options
@@ -922,6 +900,7 @@ export default function GuidedPage() {
                       setConfidenceUnsure(true)
                       if (activeWorkedExample) {
                         setShowWorkedExamplePanel(!activePrerequisiteSupport)
+                        setHasViewedWorkedExample(true)
                         setTimeout(() => workedExampleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
                       }
                     }}
@@ -1071,7 +1050,7 @@ export default function GuidedPage() {
                   <Button
                     size="sm"
                     onClick={() => setSelfExplainSubmitted(true)}
-                    disabled={selfExplainText.trim().split(" ").filter(Boolean).length < 8}
+                    disabled={wordCount(selfExplainText) < 8}
                     className="bg-purple-600 hover:bg-purple-700 text-white"
                   >
                     See model explanation
@@ -1202,7 +1181,6 @@ export default function GuidedPage() {
           </Button>
         </div>
       </div>
-    </div>
       </div>
     </div>
   )
