@@ -814,7 +814,7 @@ export default function GuidedPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSocraticSubmitted(true)}
-                  disabled={socraticText.trim().split(/\s+/).filter(Boolean).length < 5}
+                  disabled={socraticText.trim().split(" ").filter(Boolean).length < 5}
                   className="inline-flex items-center gap-2 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 transition-colors"
                 >
                   Done thinking — show me the options
@@ -1071,7 +1071,7 @@ export default function GuidedPage() {
                   <Button
                     size="sm"
                     onClick={() => setSelfExplainSubmitted(true)}
-                    disabled={selfExplainText.trim().split(/\s+/).filter(Boolean).length < 8}
+                    disabled={selfExplainText.trim().split(" ").filter(Boolean).length < 8}
                     className="bg-purple-600 hover:bg-purple-700 text-white"
                   >
                     See model explanation
