@@ -1276,7 +1276,7 @@ function HemisphereConeDrawing({ config, annotate = false }: { config: DiagramCo
         <line x1="250" y1={apexY} x2="250" y2={joinY} stroke="#2563eb" strokeWidth="1.5" />
         <text x="258" y={(apexY + joinY) / 2} fontSize="12" fill="#1d4ed8">h = {config.h} cm</text>
       </>}
-      <text x="200" y={bottomY + 24} textAnchor="middle" fontSize="10" fill="#475569">Shared circular base is internal, not part of the outside area</text>
+      <text x="200" y={bottomY + 24} textAnchor="middle" fontSize="10" fill="#475569">Side cross-section · cone and hemisphere share a circular base</text>
     </g>
   )
 }

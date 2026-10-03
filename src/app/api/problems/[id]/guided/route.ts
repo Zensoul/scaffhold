@@ -109,7 +109,9 @@ export async function GET(
     const match = rawTextLC.match(pattern)
     return match ? Number(match[1]) : undefined
   }
-  const radiusFromText = number(/radius[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  // Handle both singular "radius" and plural "radii" (for example,
+  // "both their radii being equal to 1 cm").
+  const radiusFromText = number(/radi(?:us|i)[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
   const diameter = number(/diameter[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
   const theta = number(/angle[^0-9]*([0-9]+)/) ?? 90
   const side = number(/side(?: length)?[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
