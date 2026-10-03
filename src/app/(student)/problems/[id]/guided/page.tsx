@@ -211,7 +211,8 @@ function ComprehensionQuiz({
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] px-4 py-10 bg-muted/20">
-      <div className="w-full max-w-xl space-y-5">
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 items-start gap-6">
+        <div className="space-y-5">
 
         {/* Problem statement */}
         <div className="rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
@@ -227,6 +228,9 @@ function ComprehensionQuiz({
             <GuidedDiagram stage={0} config={diagramConfig} />
           </div>
         )}
+        </div>
+
+        <div className="space-y-5">
 
         {/* ── Phase: identify each given ── */}
         {comprehensionPhase === 'givens' && (
@@ -367,6 +371,7 @@ function ComprehensionQuiz({
           className="text-xs text-gray-400 hover:text-gray-500 underline underline-offset-2 block text-center">
           Skip understanding check
         </button>
+        </div>
       </div>
     </div>
   )
