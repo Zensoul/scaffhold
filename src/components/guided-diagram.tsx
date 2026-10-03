@@ -1257,7 +1257,7 @@ const hemisphereConeStages: Record<number, React.FC<StageProps>> = {
 }
 
 function HemisphereConeDrawing({ config, annotate = false }: { config: DiagramConfig; annotate?: boolean }) {
-  const radius = 38
+  const radius = 72
   const coneHeight = config.h && config.r ? Math.min(140, Math.max(30, config.h / config.r * radius)) : 90
   const joinY = 190
   const apexY = joinY - coneHeight
@@ -1266,7 +1266,7 @@ function HemisphereConeDrawing({ config, annotate = false }: { config: DiagramCo
     <g>
       {/* Cone sits above the hemisphere; their flat circular bases coincide. */}
       <polygon points={`200,${apexY} ${200 - radius},${joinY} ${200 + radius},${joinY}`} fill="#fde68a" stroke="#d97706" strokeWidth="2" />
-      <path d={`M ${200 - radius} ${joinY} A ${radius} ${radius} 0 0 1 ${200 + radius} ${joinY} L ${200 - radius} ${joinY} Z`} fill="#fef3c7" stroke="#d97706" strokeWidth="2" />
+      <path d={`M ${200 - radius} ${joinY} A ${radius} ${radius} 0 0 0 ${200 + radius} ${joinY} L ${200 - radius} ${joinY} Z`} fill="#fef3c7" stroke="#d97706" strokeWidth="2" />
       <line x1={200 - radius} y1={joinY} x2={200 + radius} y2={joinY} stroke="#92400e" strokeWidth="1.5" strokeDasharray="4 3" />
       <text x="200" y={apexY + coneHeight * 0.52} textAnchor="middle" fontSize="12" fill="#92400e">Cone</text>
       <text x="200" y={joinY + radius * 0.58} textAnchor="middle" fontSize="11" fill="#92400e">Hemisphere</text>
