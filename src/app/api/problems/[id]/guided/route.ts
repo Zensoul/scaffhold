@@ -345,7 +345,10 @@ export async function POST(
 
   const step = await prisma.solveStep.findUnique({
     where: { id: stepId },
-    include: { guidedSolveProblem: { select: { problemId: true } } },
+    include: {
+      guidedSolveProblem: { select: { problemId: true } },
+      options: true,
+    },
   })
 
   if (!step || step.guidedSolveProblem.problemId !== id) {
@@ -368,8 +371,15 @@ export async function POST(
     const tol = step.tolerance ?? 0.01
     isCorrect = !isNaN(studentNum) && Math.abs(studentNum - correctNum) <= tol
   } else {
-    // MCQ — case-insensitive exact match on text
-    isCorrect = answer.trim().toLowerCase() === step.correctAnswer.trim().toLowerCase()
+    // Use the option's canonical correctness flag. Some imported/seeded MCQs
+    // store a letter such as "B" in correctAnswer, while the client submits
+    // the selected option text and may display options in a shuffled order.
+    const selectedOption = step.options.find(
+      (option) => option.optionText.trim().toLowerCase() === answer.trim().toLowerCase()
+    )
+    isCorrect = selectedOption
+      ? selectedOption.isCorrect
+      : answer.trim().toLowerCase() === step.correctAnswer.trim().toLowerCase()
   }
 
   // Count prior wrong attempts (before recording this one)
