@@ -1219,12 +1219,12 @@ function CapsuleDrawing({ r, h, annotate = false }: { r: number; h?: number; ann
   const bottom = 190 + middleLength / 2
   const left = 200 - radius
   const right = 200 + radius
-  const outline = `M ${left} ${top} A ${radius} ${radius} 0 0 0 ${right} ${top} L ${right} ${bottom} A ${radius} ${radius} 0 0 1 ${left} ${bottom} Z`
+  const outline = `M ${left} ${top} A ${radius} ${radius} 0 0 1 ${right} ${top} L ${right} ${bottom} A ${radius} ${radius} 0 0 1 ${left} ${bottom} Z`
 
   return (
     <g>
       {/* Side elevation: semicircular caps meet the cylinder at its full diameter. */}
-      <path d={`M ${left} ${top} A ${radius} ${radius} 0 0 0 ${right} ${top} L ${left} ${top} Z`} fill="#bae6fd" />
+      <path d={`M ${left} ${top} A ${radius} ${radius} 0 0 1 ${right} ${top} L ${left} ${top} Z`} fill="#bae6fd" />
       <rect x={left} y={top} width={radius * 2} height={middleLength} fill="#f0f9ff" />
       <path d={`M ${right} ${bottom} A ${radius} ${radius} 0 0 1 ${left} ${bottom} L ${right} ${bottom} Z`} fill="#bae6fd" />
       <path d={outline} fill="none" stroke="#0284c7" strokeWidth="2.5" strokeLinejoin="round" />
