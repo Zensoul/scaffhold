@@ -273,9 +273,14 @@ export async function GET(
   // Count prior wrong attempts on this step
   const attemptCount = attemptCounts.get(nextStep.id)?.wrong ?? 0
 
+  const isFinalNumericStep =
+    nextStep.inputType === 'numeric' &&
+    nextStep.sequenceOrder === totalSteps
   const showHint = attemptCount >= 1
   const showWorkedExample =
-    attemptCount >= 3 && nextStep.workedExampleText != null
+    !isFinalNumericStep &&
+    attemptCount >= 3 &&
+    nextStep.workedExampleText != null
 
   return NextResponse.json({
     problemComplete: false,
@@ -295,7 +300,11 @@ export async function GET(
         optionText: o.optionText,
         orderIndex: o.orderIndex,
       })),
-      hintText: showHint ? nextStep.hintText : null,
+      hintText: showHint
+        ? isFinalNumericStep
+          ? 'Recalculate the expression one operation at a time. Check signs, brackets, and decimal placement.'
+          : nextStep.hintText
+        : null,
       hintWasRephrased: false,
       errorFeedback: null,   // only included in POST response after a wrong answer
       workedExample:
@@ -456,13 +465,25 @@ export async function POST(
 
   // Wrong answer — build feedback
   const newWrongCount = priorWrong + 1
+  const isFinalNumericStep =
+    step.inputType === 'numeric' &&
+    step.sequenceOrder === step.guidedSolveProblem._count.steps
   const showHint = newWrongCount >= 1
-  const showWorkedExample = newWrongCount >= 3 && step.workedExampleText != null
+  const showWorkedExample =
+    !isFinalNumericStep &&
+    newWrongCount >= 3 &&
+    step.workedExampleText != null
 
   return NextResponse.json({
     isCorrect: false,
-    errorFeedback: step.errorFeedback,
-    hintText: showHint ? step.hintText : null,
+    errorFeedback: isFinalNumericStep
+      ? 'The earlier steps are complete. Check the arithmetic in this final expression one operation at a time.'
+      : step.errorFeedback,
+    hintText: showHint
+      ? isFinalNumericStep
+        ? 'Recalculate the expression one operation at a time. Check signs, brackets, and decimal placement.'
+        : step.hintText
+      : null,
     workedExample:
       showWorkedExample
         ? {
