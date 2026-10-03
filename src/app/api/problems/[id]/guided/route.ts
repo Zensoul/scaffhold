@@ -90,14 +90,44 @@ export async function GET(
     return NextResponse.json({ error: 'Guided problem not found' }, { status: 404 })
   }
 
-  // Parse radius and angle from rawText for diagram rendering
+  // Parse radius/diameter and angle from rawText for diagram rendering.
   const rawTextLC = guidedProblem.problem.rawText.toLowerCase()
-  const rMatch = rawTextLC.match(/radius[^0-9]*([0-9]+(?:\.5)?)/)
+  const radiusMatch = rawTextLC.match(/radius[^0-9]*([0-9]+(?:\.5)?)/)
+  const diameterMatch = rawTextLC.match(/diameter[^0-9]*([0-9]+(?:\.5)?)/)
   const thetaMatch = rawTextLC.match(/angle[^0-9]*([0-9]+)/)
 
-  // Determine problem type for diagram selection
-  let problemType: 'sector' | 'arc' | 'segment' | 'combination' = 'segment'
-  if (rawTextLC.includes('arc') && rawTextLC.includes('length')) {
+  // Select a matching visual from the shapes named in the problem. Unknown
+  // shapes deliberately get no diagram; showing a segment for every new type
+  // makes the visual misleading.
+  type GuidedDiagramType =
+    | 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square'
+    | 'mirror' | 'lens' | 'cylinder-hemispheres' | 'hemisphere-cone'
+    | 'cube-hemisphere' | 'cylinder-base-hemisphere' | 'frustum'
+    | 'frustum-cylinder' | 'none'
+  let problemType: GuidedDiagramType = 'none'
+  if (
+    rawTextLC.includes('capsule') ||
+    (rawTextLC.includes('cylinder') && rawTextLC.includes('hemispheres') &&
+      (rawTextLC.includes('two hemispheres') || rawTextLC.includes('both ends') || rawTextLC.includes('each end')))
+  ) {
+    problemType = 'cylinder-hemispheres'
+  } else if (rawTextLC.includes('frustum') && rawTextLC.includes('cylinder')) {
+    problemType = 'frustum-cylinder'
+  } else if (rawTextLC.includes('frustum')) {
+    problemType = 'frustum'
+  } else if (rawTextLC.includes('cube') && rawTextLC.includes('hemisphere')) {
+    problemType = 'cube-hemisphere'
+  } else if (rawTextLC.includes('cone') && rawTextLC.includes('hemisphere')) {
+    problemType = 'hemisphere-cone'
+  } else if (rawTextLC.includes('cylinder') && rawTextLC.includes('hemispherical base')) {
+    problemType = 'cylinder-base-hemisphere'
+  } else if (rawTextLC.includes('four circles') && rawTextLC.includes('square')) {
+    problemType = 'circles-in-square'
+  } else if (rawTextLC.includes('lens')) {
+    problemType = 'lens'
+  } else if (rawTextLC.includes('mirror')) {
+    problemType = 'mirror'
+  } else if (rawTextLC.includes('arc') && rawTextLC.includes('length')) {
     problemType = 'arc'
   } else if (rawTextLC.includes('area of a sector') || rawTextLC.includes('area of the sector')) {
     problemType = 'sector'
@@ -113,8 +143,9 @@ export async function GET(
     problemType = 'segment'
   }
 
+  const parsedRadius = radiusMatch ? Number(radiusMatch[1]) : diameterMatch ? Number(diameterMatch[1]) / 2 : 15
   const diagramConfig = {
-    r: rMatch ? Number(rMatch[1]) : 15,
+    r: parsedRadius,
     theta: thetaMatch ? Number(thetaMatch[1]) : 90,
     isMajorSegment: rawTextLC.includes('major'),
     problemType,
