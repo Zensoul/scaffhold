@@ -121,7 +121,7 @@ type ComprehensionQuizProps = {
   setGivenIndex: (n: number) => void
   comprehensionPhase: 'givens' | 'unknown' | 'solving'
   setComprehensionPhase: (p: 'givens' | 'unknown' | 'solving') => void
-  buildGivensChoices: (correctGivens: string[]) => string[]
+  diagramConfig: ProblemInfo['diagramConfig'] | null
 }
 
 function shuffle<T>(arr: T[], seed: number): T[] {
@@ -152,7 +152,7 @@ function makeDistractors(givens: string[]): string[] {
 
 function ComprehensionQuiz({
   problem, allGivens, givenIndex, setGivenIndex,
-  comprehensionPhase, setComprehensionPhase,
+  comprehensionPhase, setComprehensionPhase, diagramConfig,
 }: ComprehensionQuizProps) {
   // Per-given quiz state
   const [selected, setSelected] = useState<string | null>(null)
@@ -222,6 +222,12 @@ function ComprehensionQuiz({
           )}
         </div>
 
+        {diagramConfig && (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" aria-label="Problem diagram">
+            <GuidedDiagram stage={0} config={diagramConfig} />
+          </div>
+        )}
+
         {/* ── Phase: identify each given ── */}
         {comprehensionPhase === 'givens' && (
           <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-5 space-y-4">
@@ -249,7 +255,7 @@ function ComprehensionQuiz({
 
             {/* MCQ choices */}
             <div className="space-y-2">
-              {choices.map((choice) => {
+              {choices.filter(Boolean).map((choice) => {
                 const isSelected = selected === choice
                 const isCorrect = choice === currentGiven
                 let cls = 'w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors '
@@ -574,13 +580,18 @@ export default function GuidedPage() {
       : givens && typeof givens === 'object'
         ? Object.entries(givens as Record<string, string>).map(([key, value]) => `${key} = ${value}`)
         : []
-    return [...givenItems, ...(Array.isArray(data.problem.impliedGivens) ? data.problem.impliedGivens : [])]
+    const impliedItems = Array.isArray(data.problem.impliedGivens) ? data.problem.impliedGivens : []
+    return [...givenItems, ...impliedItems]
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
   })()
   const diagramConfig = (() => {
     const { problemType, ...geometry } = data.problem.diagramConfig
     if (!problemType || problemType === 'none') return null
     return { ...geometry, problemType }
   })()
+  const activeComprehensionPhase = comprehensionPhase === 'givens' && allGivens.length === 0
+    ? 'unknown'
+    : comprehensionPhase
 
   // ── Problem complete ───────────────────────────────────────────────────────
   if (data.problemComplete) {
@@ -609,16 +620,16 @@ export default function GuidedPage() {
 
   // ── Comprehension phase ────────────────────────────────────────────────────
   // Active identification: student must select givens and unknown, not just read them
-  if (comprehensionPhase !== 'solving') {
+  if (activeComprehensionPhase !== 'solving') {
     return (
       <ComprehensionQuiz
         problem={data.problem}
         allGivens={allGivens}
         givenIndex={givenIndex}
         setGivenIndex={setGivenIndex}
-        comprehensionPhase={comprehensionPhase}
+        comprehensionPhase={activeComprehensionPhase}
         setComprehensionPhase={setComprehensionPhase}
-        buildGivensChoices={() => []}
+        diagramConfig={diagramConfig}
       />
     )
   }
