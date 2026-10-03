@@ -43,9 +43,23 @@ import type { JSX } from 'react'
 interface DiagramConfig {
   r: number                    // radius in cm
   theta: number                // central angle in degrees
+  h?: number                   // problem-specific length or height
   answerCm2?: string           // final answer label
   isMajorSegment?: boolean     // true for major-segment problems
-  problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' | 'cylinder-hemispheres' | 'hemisphere-cone' | 'cube-hemisphere' | 'cylinder-base-hemisphere' | 'frustum' | 'frustum-cylinder' | 'none'
+  problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circle-in-square' | 'circles-in-square' | 'grazing-quarter' | 'semicircle' | 'semicircles-in-square' | 'mirror' | 'lens' | 'refraction' | 'cylinder-hemispheres' | 'hemisphere-cone' | 'cube-hemisphere' | 'cylinder-base-hemisphere' | 'frustum' | 'frustum-cylinder' | 'sphere-cylinder' | 'well-embankment' | 'none'
+  r2?: number
+  topRadius?: number
+  bottomRadius?: number
+  hemisphereRadius?: number
+  cylinderRadius?: number
+  side?: number
+  f?: number
+  u?: number
+  v?: number
+  isConvex?: boolean
+  angleOfIncidence?: number
+  angleOfRefraction?: number
+  criticalAngle?: boolean
 }
 
 interface GuidedDiagramProps {
@@ -578,6 +592,170 @@ const combinationStages: Record<number, (props: StageProps) => JSX.Element> = {
   },
 }
 
+// Specific circular composites. Keep these separate from the inscribed-square
+// diagram so each picture matches the wording of its problem.
+const circleInSquareStages: Record<number, (props: StageProps) => JSX.Element> = {
+  0: ({ config: { r, side } }) => (
+    <g>
+      <rect x="90" y="75" width="220" height="220" fill="#f8fafc" stroke="#64748b" strokeWidth="2" />
+      <circle
+        cx="200" cy="185"
+        r={side && r ? Math.min(110, 110 * (r / (side / 2))) : 110}
+        fill="#dbeafe" fillOpacity="0.55" stroke="#2563eb" strokeWidth="2.5"
+      />
+      <line x1="90" y1="185" x2="310" y2="185" stroke="#2563eb" strokeWidth="1.5" strokeDasharray="5 4" />
+      <text x="200" y="318" textAnchor="middle" fontSize="12" fill="#334155">Square side = {side} cm · circle radius = {r} cm</text>
+    </g>
+  ),
+}
+
+const grazingQuarterStages: Record<number, (props: StageProps) => JSX.Element> = {
+  0: ({ config: { r, side } }) => {
+    const square = 220
+    const radius = side && r ? Math.min(square * 0.48, square * r / side) : 154
+    const x = 90, y = 70
+    return (
+      <g>
+        <rect x={x} y={y} width={square} height={square} fill="#f8fafc" stroke="#64748b" strokeWidth="2" />
+        <path d={`M ${x} ${y} L ${x + radius} ${y} A ${radius} ${radius} 0 0 1 ${x} ${y + radius} Z`} fill="#fbbf24" fillOpacity="0.42" stroke="#d97706" strokeWidth="2" />
+        <circle cx={x} cy={y} r="5" fill="#7c2d12" />
+        <line x1={x} y1={y} x2={x + radius} y2={y} stroke="#dc2626" strokeWidth="1.5" strokeDasharray="5 3" />
+        <text x={x + radius / 2} y={y - 8} textAnchor="middle" fontSize="12" fill="#b91c1c">rope = {r} m</text>
+        <text x={x + square / 2} y={y + square + 22} textAnchor="middle" fontSize="12" fill="#334155">Square field — grazing is a quarter-circle</text>
+      </g>
+    )
+  },
+}
+
+const semicircleStages: Record<number, (props: StageProps) => JSX.Element> = {
+  0: ({ config: { r } }) => {
+    const radius = 100
+    const cx = 200, cy = 190
+    return (
+      <g>
+        <path d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy} Z`} fill="#fef3c7" stroke="#d97706" strokeWidth="2.5" />
+        <line x1={cx - radius} y1={cy} x2={cx + radius} y2={cy} stroke="#334155" strokeWidth="2" />
+        <text x={cx} y={cy - radius - 12} textAnchor="middle" fontSize="12" fill="#92400e">semicircular arc</text>
+        <text x={cx} y={cy + 22} textAnchor="middle" fontSize="12" fill="#334155">diameter = {2 * r} mm</text>
+      </g>
+    )
+  },
+}
+
+const semicirclesInSquareStages: Record<number, (props: StageProps) => JSX.Element> = {
+  0: ({ config: { side } }) => {
+    const x = 80, y = 65, size = 240, count = 4, segment = size / count, radius = segment / 2
+    return (
+      <g>
+        <rect x={x} y={y} width={size} height={size} fill="#fff" stroke="#475569" strokeWidth="2" />
+        {Array.from({ length: count }, (_, i) => {
+          const offset = i * segment
+          return <g key={i}>
+            <path d={`M ${x + offset} ${y} A ${radius} ${radius} 0 0 1 ${x + offset + segment} ${y}`} fill="none" stroke="#d97706" strokeWidth="2" />
+            <path d={`M ${x + offset + segment} ${y + size} A ${radius} ${radius} 0 0 0 ${x + offset} ${y + size}`} fill="none" stroke="#d97706" strokeWidth="2" />
+            <path d={`M ${x} ${y + offset} A ${radius} ${radius} 0 0 1 ${x} ${y + offset + segment}`} fill="none" stroke="#2563eb" strokeWidth="2" />
+            <path d={`M ${x + size} ${y + offset + segment} A ${radius} ${radius} 0 0 1 ${x + size} ${y + offset}`} fill="none" stroke="#2563eb" strokeWidth="2" />
+          </g>
+        })}
+        <text x="200" y="332" textAnchor="middle" fontSize="11" fill="#334155">4 equal inward semicircles on each side · side = {side} cm</text>
+      </g>
+    )
+  },
+}
+
+const refractionStages: Record<number, (props: StageProps) => JSX.Element> = {
+  0: ({ config }) => {
+    const angleI = config.angleOfIncidence ?? 35
+    const angleR = config.angleOfRefraction ?? (rawRefractionEstimate(angleI))
+    const length = 105
+    const interfaceX = 200, interfaceY = 190
+    const radI = angleI * Math.PI / 180, radR = angleR * Math.PI / 180
+    if (config.criticalAngle) {
+      const critical = 42 * Math.PI / 180
+      return <g>
+        <rect x="200" y="55" width="170" height="270" fill="#dbeafe" fillOpacity="0.45" />
+        <line x1={interfaceX} y1="55" x2={interfaceX} y2="325" stroke="#475569" strokeWidth="2" />
+        <line x1="60" y1={interfaceY} x2="360" y2={interfaceY} stroke="#94a3b8" strokeDasharray="5 4" />
+        <line x1={interfaceX + length * Math.cos(critical)} y1={interfaceY + length * Math.sin(critical)} x2={interfaceX} y2={interfaceY} stroke="#dc2626" strokeWidth="2.5" />
+        <line x1={interfaceX} y1={interfaceY} x2={interfaceX} y2="70" stroke="#2563eb" strokeWidth="2.5" />
+        <text x="270" y="294" fontSize="12" fill="#334155">Optically denser medium</text>
+        <text x="207" y="80" fontSize="12" fill="#1d4ed8">Refracted ray travels along boundary</text>
+        <text x="228" y="178" fontSize="12" fill="#b91c1c">i = C</text>
+        <text x="66" y="180" fontSize="11" fill="#64748b">Normal</text>
+      </g>
+    }
+    return (
+      <g>
+        <rect x="200" y="55" width="170" height="270" fill="#dbeafe" fillOpacity="0.35" />
+        <line x1={interfaceX} y1="55" x2={interfaceX} y2="325" stroke="#475569" strokeWidth="2" />
+        <line x1="60" y1={interfaceY} x2="360" y2={interfaceY} stroke="#94a3b8" strokeDasharray="5 4" />
+        <line x1={interfaceX - length * Math.cos(radI)} y1={interfaceY - length * Math.sin(radI)} x2={interfaceX} y2={interfaceY} stroke="#dc2626" strokeWidth="2.5" />
+        <line x1={interfaceX} y1={interfaceY} x2={interfaceX + length * Math.cos(radR)} y2={interfaceY - length * Math.sin(radR)} stroke="#2563eb" strokeWidth="2.5" />
+        <path d={`M ${interfaceX - 34} ${interfaceY} A 34 34 0 0 1 ${interfaceX - 34 * Math.cos(radI)} ${interfaceY - 34 * Math.sin(radI)}`} fill="none" stroke="#dc2626" strokeWidth="1.5" />
+        <path d={`M ${interfaceX + 34} ${interfaceY} A 34 34 0 0 0 ${interfaceX + 34 * Math.cos(radR)} ${interfaceY - 34 * Math.sin(radR)}`} fill="none" stroke="#2563eb" strokeWidth="1.5" />
+        <text x="115" y="105" fontSize="12" fill="#b91c1c">Incident ray · i = {config.angleOfIncidence !== undefined ? `${angleI}°` : 'i'}</text>
+        <text x="282" y="105" fontSize="12" fill="#1d4ed8">Refracted ray · r = {config.angleOfRefraction !== undefined ? `${angleR}°` : 'r'}</text>
+        <text x="282" y="300" fontSize="12" fill="#334155">Second medium</text>
+        <text x="75" y="300" fontSize="12" fill="#334155">First medium</text>
+        <text x="209" y="178" fontSize="11" fill="#64748b">normal</text>
+      </g>
+    )
+  },
+}
+
+function rawRefractionEstimate(angle: number) {
+  return angle === 30 ? 19.47 : angle === 45 ? 28 : Math.round(angle * 0.67)
+}
+
+const sphereCylinderStages: Record<number, (props: StageProps) => JSX.Element> = {
+  0: ({ config }) => {
+    const sphereR = 50
+    const cylinderR = Math.min(80, sphereR * (config.cylinderRadius ?? 6) / (config.r || 4.2))
+    const cylinderH = (4 * Math.pow(config.r || 4.2, 3)) / (3 * Math.pow(config.cylinderRadius || 6, 2))
+    const drawnH = Math.max(52, Math.min(140, cylinderH * 35))
+    return (
+      <g>
+        <circle cx="95" cy="190" r={sphereR} fill="#bae6fd" stroke="#0284c7" strokeWidth="2" />
+        <text x="95" y="276" textAnchor="middle" fontSize="12" fill="#0c4a6e">Sphere · r={config.r} cm</text>
+        <path d="M 155 190 L 235 190" stroke="#64748b" strokeWidth="2" markerEnd="url(#guided-diagram-arrow)" />
+        <rect x="270" y={190 - drawnH / 2} width={cylinderR} height={drawnH} fill="#e0e7ff" stroke="#4f46e5" strokeWidth="2" />
+        <ellipse cx={270 + cylinderR / 2} cy={190 - drawnH / 2} rx={cylinderR / 2} ry="12" fill="#c7d2fe" stroke="#4f46e5" strokeWidth="2" />
+        <ellipse cx={270 + cylinderR / 2} cy={190 + drawnH / 2} rx={cylinderR / 2} ry="12" fill="#c7d2fe" stroke="#4f46e5" strokeWidth="2" />
+        <text x="300" y="286" textAnchor="middle" fontSize="12" fill="#3730a3">Cylinder · r={config.cylinderRadius} cm</text>
+        <text x="200" y="105" textAnchor="middle" fontSize="12" fill="#334155">Melted and recast · volume stays equal</text>
+      </g>
+    )
+  },
+}
+
+const wellEmbankmentStages: Record<number, (props: StageProps) => JSX.Element> = {
+  0: ({ config }) => {
+    const inner = 27
+    const outer = Math.min(110, inner * ((config.r + (config.side ?? 4)) / (config.r || 1.5)))
+    return (
+      <g>
+        <circle cx="200" cy="190" r={outer} fill="#fef3c7" stroke="#d97706" strokeWidth="2" />
+        <circle cx="200" cy="190" r={inner} fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
+        <circle cx="200" cy="190" r="4" fill="#0f172a" />
+        <line x1="200" y1="190" x2="200" y2={190 - inner} stroke="#0284c7" strokeWidth="2" />
+        <line x1={200 + inner} y1="190" x2={200 + outer} y2="190" stroke="#d97706" strokeWidth="2" />
+        <text x="200" y="54" textAnchor="middle" fontSize="12" fill="#334155">Top view · well and surrounding embankment</text>
+        <text x="200" y="330" textAnchor="middle" fontSize="12" fill="#334155">Well depth = {config.h} m · embankment width = {config.side} m</text>
+      </g>
+    )
+  },
+}
+
+// Unknown problem types should never inherit a circle-segment picture. Show a
+// neutral placeholder until a matching diagram is authored for that problem.
+const noDiagramStages: Record<number, (props: StageProps) => JSX.Element> = {
+  0: () => <g>
+    <rect x="55" y="115" width="290" height="130" rx="14" fill="#f8fafc" stroke="#cbd5e1" strokeDasharray="6 4" />
+    <text x="200" y="175" textAnchor="middle" fontSize="15" fill="#475569">Diagram not available</text>
+    <text x="200" y="202" textAnchor="middle" fontSize="11" fill="#64748b">This problem is shown without a diagram.</text>
+  </g>,
+}
+
 
 // ── Mirror Stage Maps ──────────────────────────────────────────────────────
 // Stage 0 — concave mirror outline + principal axis + labels (C, F, P)
@@ -805,6 +983,120 @@ const lensStages: Record<number, (props: StageProps) => JSX.Element> = {
   ),
 }
 
+function OpticsSketch({ kind, stage, config }: { kind: 'mirror' | 'lens'; stage: number; config: DiagramConfig }) {
+  const mirror = kind === 'mirror'
+  const convex = !!config.isConvex
+  const deviceX = mirror ? convex ? 242 : 270 : 200
+  const focalLength = Math.abs(config.f ?? 15)
+  const u = config.u
+  const givenV = config.v
+  const derivedV = u && focalLength
+    ? mirror
+      ? convex ? focalLength * u / (focalLength + u) : (u === focalLength ? undefined : focalLength * u / (u - focalLength))
+      : convex ? (u === focalLength ? undefined : focalLength * u / (u - focalLength)) : -focalLength * u / (focalLength + u)
+    : undefined
+  const v = givenV ?? derivedV
+  const scaleLimit = mirror ? 210 : 145
+  const scale = Math.min(mirror ? 3.6 : 3.1, scaleLimit / Math.max(focalLength * 2, u ?? 0, v ?? 0, 1))
+  const direction = mirror && convex ? 1 : -1
+  const focusX = mirror
+    ? deviceX + direction * focalLength * scale
+    : deviceX + (convex ? 1 : -1) * focalLength * scale
+  const centreX = mirror ? deviceX + direction * 2 * focalLength * scale : deviceX + focalLength * scale
+  const objectX = u ? deviceX - u * scale : undefined
+  const imageX = v === undefined ? undefined : mirror
+    ? deviceX + (convex ? Math.abs(v) : -v) * scale
+    : deviceX + v * scale
+  const imageHeight = u && v ? Math.min(76, 68 * Math.abs(v) / u) : 42
+  const objectTipY = 120
+  const imageTipY = mirror && convex ? 190 - imageHeight :
+    u && v ? 190 + Math.sign(v) * imageHeight : 190 - imageHeight
+  const objectLabel = mirror ? 'Object' : 'Object'
+  const focusLabel = mirror ? 'F' : convex ? 'F₂' : 'F₁'
+  const surfacePath = mirror
+    ? convex ? 'M 270 80 Q 242 190 270 300' : 'M 270 80 Q 298 190 270 300'
+    : convex ? 'M 190 80 Q 170 190 190 300 M 210 80 Q 230 190 210 300'
+      : 'M 180 80 Q 195 190 180 300 M 220 80 Q 205 190 220 300'
+
+  return (
+    <g>
+      <line x1="35" y1="190" x2="370" y2="190" stroke="#64748b" strokeWidth="1.4" strokeDasharray="6 4" />
+      <path d={surfacePath} stroke="#2563eb" strokeWidth="4" fill="none" strokeLinecap="round" />
+      <text x={deviceX} y="326" textAnchor="middle" fontSize="12" fill="#334155">
+        {mirror ? `${convex ? 'Convex' : 'Concave'} mirror` : `${convex ? 'Convex' : 'Concave'} lens`}
+      </text>
+      <circle cx={deviceX} cy="190" r="4" fill="#2563eb" />
+      <text x={deviceX + (mirror ? -11 : 7)} y="181" fontSize="11" fill="#2563eb" fontWeight="bold">{mirror ? 'P' : 'O'}</text>
+      <circle cx={focusX} cy="190" r="4" fill="#f59e0b" />
+      <text x={focusX} y="178" textAnchor="middle" fontSize="11" fill="#b45309" fontWeight="bold">{focusLabel}</text>
+      {mirror && !convex && <>
+        <circle cx={centreX} cy="190" r="4" fill="#10b981" />
+        <text x={centreX} y="178" textAnchor="middle" fontSize="11" fill="#059669" fontWeight="bold">C</text>
+      </>}
+      {!mirror && <>
+        <circle cx={deviceX + focalLength * scale} cy="190" r="4" fill="#f59e0b" />
+        <text x={deviceX + focalLength * scale} y="178" textAnchor="middle" fontSize="11" fill="#b45309" fontWeight="bold">F₂</text>
+      </>}
+      {objectX !== undefined && <>
+        <line x1={objectX} y1="190" x2={objectX} y2={objectTipY} stroke="#ef4444" strokeWidth="2.5" />
+        <path d={`M ${objectX - 5} ${objectTipY + 8} L ${objectX} ${objectTipY} L ${objectX + 5} ${objectTipY + 8}`} fill="none" stroke="#ef4444" strokeWidth="2" />
+        <text x={objectX} y="210" textAnchor="middle" fontSize="11" fill="#b91c1c">{objectLabel}{u ? ` · u=${u} cm` : ''}</text>
+      </>}
+      {stage >= 2 && objectX !== undefined && u !== undefined && (mirror || config.f !== undefined) && (() => {
+        const hitX = deviceX
+        const hitY = objectTipY
+        const virtualImage = v !== undefined && v < 0 || mirror && convex
+        const outgoingEndX = mirror
+          ? (convex || virtualImage ? hitX - 60 : imageX ?? focusX)
+          : (convex && !virtualImage ? imageX ?? 350 : 350)
+        const slopeEndY = mirror
+          ? convex ? hitY + (hitY - 190) * (hitX - outgoingEndX) / (focusX - hitX) : hitY + (190 - hitY) * (hitX - outgoingEndX) / (hitX - focusX)
+          : convex ? hitY + (190 - hitY) * (outgoingEndX - hitX) / (focusX - hitX) : hitY + (hitY - 190) * (outgoingEndX - hitX) / (deviceX - focusX)
+        return <g>
+          <line x1={objectX} y1={objectTipY} x2={hitX} y2={hitY} stroke="#f59e0b" strokeWidth="1.8" />
+          <line x1={hitX} y1={hitY} x2={outgoingEndX} y2={slopeEndY} stroke="#f59e0b" strokeWidth="1.8" />
+          {((mirror && convex) || (!mirror && !convex)) && (
+            <line x1={hitX} y1={hitY} x2={focusX} y2="190" stroke="#f59e0b" strokeWidth="1.4" strokeDasharray="5 4" />
+          )}
+          {virtualImage && imageX !== undefined && (
+            <line x1={hitX} y1={hitY} x2={imageX} y2={imageTipY} stroke="#f59e0b" strokeWidth="1.3" strokeDasharray="5 4" />
+          )}
+          {!mirror && <line x1={objectX} y1={objectTipY} x2={imageX ?? 350} y2={imageTipY} stroke="#10b981" strokeWidth="1.5" />}
+          <text x="200" y="350" textAnchor="middle" fontSize="10" fill="#475569">Principal ray shown schematically · distances use the problem values</text>
+        </g>
+      })()}
+      {stage >= 3 && imageX !== undefined && <>
+        <line x1={imageX} y1="190" x2={imageX} y2={imageTipY} stroke="#7c3aed" strokeWidth="2.5" strokeDasharray={mirror && convex || !mirror && !convex ? '5 3' : undefined} />
+        <path d={`M ${imageX - 5} ${imageTipY - Math.sign(imageTipY - 190) * 8} L ${imageX} ${imageTipY} L ${imageX + 5} ${imageTipY - Math.sign(imageTipY - 190) * 8}`} fill="none" stroke="#7c3aed" strokeWidth="2" />
+        <text x={imageX} y={imageTipY + (imageTipY > 190 ? 18 : -8)} textAnchor="middle" fontSize="11" fill="#6d28d9">Image · v={v} cm</text>
+      </>}
+      {stage >= 4 && <>
+        <rect x="70" y="55" width="260" height="55" rx="8" fill="#eff6ff" stroke="#93c5fd" />
+        <text x="200" y="78" textAnchor="middle" fontSize="13" fill="#1e3a8a" fontWeight="bold">{mirror ? '1/f = 1/u + 1/v' : '1/f = 1/v − 1/u'}</text>
+        <text x="200" y="98" textAnchor="middle" fontSize="11" fill="#334155">Apply the sign convention for the shown optical element.</text>
+      </>}
+    </g>
+  )
+}
+
+const accurateMirrorStages: Record<number, (props: StageProps) => JSX.Element> = {
+  ...mirrorStages,
+  0: ({ config }) => <OpticsSketch kind="mirror" stage={0} config={config} />,
+  1: ({ config }) => <OpticsSketch kind="mirror" stage={1} config={config} />,
+  2: ({ config }) => <OpticsSketch kind="mirror" stage={2} config={config} />,
+  3: ({ config }) => <OpticsSketch kind="mirror" stage={3} config={config} />,
+  4: ({ config }) => <OpticsSketch kind="mirror" stage={4} config={config} />,
+}
+
+const accurateLensStages: Record<number, (props: StageProps) => JSX.Element> = {
+  ...lensStages,
+  0: ({ config }) => <OpticsSketch kind="lens" stage={0} config={config} />,
+  1: ({ config }) => <OpticsSketch kind="lens" stage={1} config={config} />,
+  2: ({ config }) => <OpticsSketch kind="lens" stage={2} config={config} />,
+  3: ({ config }) => <OpticsSketch kind="lens" stage={3} config={config} />,
+  4: ({ config }) => <OpticsSketch kind="lens" stage={4} config={config} />,
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 
@@ -827,13 +1119,13 @@ const circlesInSquareStages: Record<number, (props: StageProps) => JSX.Element> 
         <rect x={sx} y={sy} width={S * 2} height={S * 2} fill="none" stroke="#D1D5DB" strokeWidth={2} />
         {/* Four quarter-circles at each corner, filled gold */}
         {/* top-left corner: arc sweeps right and down */}
-        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 0 ${sx} ${sy + S}`} fill={GOLD} opacity={0.45} />
+        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 1 ${sx} ${sy + S}`} fill={GOLD} opacity={0.45} />
         {/* top-right corner */}
-        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy}`} fill={GOLD} opacity={0.45} />
+        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 1 ${sx + S} ${sy}`} fill={GOLD} opacity={0.45} />
         {/* bottom-right corner */}
-        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 0 ${sx + S * 2} ${sy + S}`} fill={GOLD} opacity={0.45} />
+        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 1 ${sx + S * 2} ${sy + S}`} fill={GOLD} opacity={0.45} />
         {/* bottom-left corner */}
-        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy + S * 2}`} fill={GOLD} opacity={0.45} />
+        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 1 ${sx + S} ${sy + S * 2}`} fill={GOLD} opacity={0.45} />
         <text x={CX} y={CY} fontSize={11} fill="#92400E" textAnchor="middle" dominantBaseline="middle">shaded = ?</text>
         <text x={CX} y={sy - 14} fontSize={12} fill="#1E40AF" fontWeight="bold" textAnchor="middle">
           square side = {r * 2} cm, r = {r} cm
@@ -849,10 +1141,10 @@ const circlesInSquareStages: Record<number, (props: StageProps) => JSX.Element> 
     return (
       <>
         <rect x={sx} y={sy} width={S * 2} height={S * 2} fill={BLUE} opacity={0.08} stroke={BLUE} strokeWidth={2} />
-        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 0 ${sx} ${sy + S}`} fill={GOLD} opacity={0.55} />
-        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy}`} fill={GOLD} opacity={0.55} />
-        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 0 ${sx + S * 2} ${sy + S}`} fill={GOLD} opacity={0.55} />
-        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy + S * 2}`} fill={GOLD} opacity={0.55} />
+        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 1 ${sx} ${sy + S}`} fill={GOLD} opacity={0.55} />
+        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 1 ${sx + S} ${sy}`} fill={GOLD} opacity={0.55} />
+        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 1 ${sx + S * 2} ${sy + S}`} fill={GOLD} opacity={0.55} />
+        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 1 ${sx + S} ${sy + S * 2}`} fill={GOLD} opacity={0.55} />
         {/* side label */}
         <line x1={sx} y1={sy + S * 2 + 18} x2={sx + S * 2} y2={sy + S * 2 + 18} stroke={BLUE} strokeWidth={1.5} />
         <text x={CX} y={sy + S * 2 + 32} fontSize={11} fill={BLUE} textAnchor="middle">side = {r * 2} cm</text>
@@ -871,10 +1163,10 @@ const circlesInSquareStages: Record<number, (props: StageProps) => JSX.Element> 
     return (
       <>
         <rect x={sx} y={sy} width={S * 2} height={S * 2} fill={BLUE} opacity={0.08} stroke="#D1D5DB" strokeWidth={1.5} />
-        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 0 ${sx} ${sy + S}`} fill={GOLD} opacity={0.4} />
-        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy}`} fill={GOLD} opacity={0.4} />
-        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 0 ${sx + S * 2} ${sy + S}`} fill={GOLD} opacity={0.4} />
-        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy + S * 2}`} fill={GOLD} opacity={0.4} />
+        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 1 ${sx} ${sy + S}`} fill={GOLD} opacity={0.4} />
+        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 1 ${sx + S} ${sy}`} fill={GOLD} opacity={0.4} />
+        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 1 ${sx + S * 2} ${sy + S}`} fill={GOLD} opacity={0.4} />
+        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 1 ${sx + S} ${sy + S * 2}`} fill={GOLD} opacity={0.4} />
         {/* formula box */}
         <rect x={60} y={290} width={280} height={60} rx={8} fill="#FEF3C7" stroke={GOLD} strokeWidth={1.5} />
         <text x={200} y={314} fontSize={12} fill="#92400E" textAnchor="middle" fontWeight="bold">
@@ -896,10 +1188,10 @@ const circlesInSquareStages: Record<number, (props: StageProps) => JSX.Element> 
       <>
         <rect x={sx} y={sy} width={S * 2} height={S * 2} fill={GOLD} opacity={0.5} stroke="#D1D5DB" strokeWidth={1.5} />
         {/* white out the four quarter-circles to reveal the unshaded petal shapes */}
-        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 0 ${sx} ${sy + S}`} fill="white" opacity={0.85} />
-        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy}`} fill="white" opacity={0.85} />
-        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 0 ${sx + S * 2} ${sy + S}`} fill="white" opacity={0.85} />
-        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 0 ${sx + S} ${sy + S * 2}`} fill="white" opacity={0.85} />
+        <path d={`M ${sx + S} ${sy} A ${S} ${S} 0 0 1 ${sx} ${sy + S}`} fill="white" opacity={0.85} />
+        <path d={`M ${sx + S * 2} ${sy + S} A ${S} ${S} 0 0 1 ${sx + S} ${sy}`} fill="white" opacity={0.85} />
+        <path d={`M ${sx + S} ${sy + S * 2} A ${S} ${S} 0 0 1 ${sx + S * 2} ${sy + S}`} fill="white" opacity={0.85} />
+        <path d={`M ${sx} ${sy + S} A ${S} ${S} 0 0 1 ${sx + S} ${sy + S * 2}`} fill="white" opacity={0.85} />
         {problemComplete && (
           <>
             <circle cx={CX} cy={CY} r={18} fill="#10B981" />
@@ -920,121 +1212,141 @@ const circlesInSquareStages: Record<number, (props: StageProps) => JSX.Element> 
 // ─── Chapter 13: Surface Areas & Volumes diagrams ────────────────────────────
 
 // Cylinder with two hemispheres (medicine capsule / gulab jamun)
-const cylinderHemispheresStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
-  0: () => (
+function CapsuleDrawing({ r, h, annotate = false }: { r: number; h?: number; annotate?: boolean }) {
+  const radius = 54
+  const middleLength = h && r > 0 ? Math.min(220, Math.max(70, (h / r) * radius)) : 150
+  const top = 190 - middleLength / 2
+  const bottom = 190 + middleLength / 2
+  const left = 200 - radius
+  const right = 200 + radius
+  const outline = `M ${left} ${top} A ${radius} ${radius} 0 0 0 ${right} ${top} L ${right} ${bottom} A ${radius} ${radius} 0 0 1 ${left} ${bottom} Z`
+
+  return (
     <g>
-      <ellipse cx="200" cy="120" rx="60" ry="20" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
-      <ellipse cx="200" cy="260" rx="60" ry="20" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
-      <rect x="140" y="120" width="120" height="140" fill="#f0f9ff" stroke="#0284c7" strokeWidth="2" />
-      <path d="M140 120 Q110 120 110 150 Q110 100 140 120" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
-      <path d="M260 120 Q290 120 290 150 Q290 100 260 120" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
-      <path d="M140 260 Q110 260 110 230 Q110 280 140 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
-      <path d="M260 260 Q290 260 290 230 Q290 280 260 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
-      {/* Hemisphere left */}
-      <path d="M140 190 Q110 190 110 190" fill="none" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="4 2"/>
-      <text x="200" y="195" textAnchor="middle" fontSize="12" fill="#0c4a6e">Cylinder</text>
-      <text x="100" y="155" textAnchor="middle" fontSize="11" fill="#0369a1">Hemisphere</text>
-      <text x="100" y="240" textAnchor="middle" fontSize="11" fill="#0369a1">Hemisphere</text>
+      {/* Side elevation: semicircular caps meet the cylinder at its full diameter. */}
+      <path d={`M ${left} ${top} A ${radius} ${radius} 0 0 0 ${right} ${top} L ${left} ${top} Z`} fill="#bae6fd" />
+      <rect x={left} y={top} width={radius * 2} height={middleLength} fill="#f0f9ff" />
+      <path d={`M ${right} ${bottom} A ${radius} ${radius} 0 0 1 ${left} ${bottom} L ${right} ${bottom} Z`} fill="#bae6fd" />
+      <path d={outline} fill="none" stroke="#0284c7" strokeWidth="2.5" strokeLinejoin="round" />
+      <text x="200" y="190" textAnchor="middle" fontSize="12" fill="#0c4a6e">Cylinder</text>
+      <text x="200" y={top - radius * 0.45} textAnchor="middle" fontSize="10" fill="#0369a1">Hemisphere</text>
+      <text x="200" y={bottom + radius * 0.45} textAnchor="middle" fontSize="10" fill="#0369a1">Hemisphere</text>
+      {annotate && (
+        <g>
+          <line x1="200" y1={top} x2={right} y2={top} stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2" />
+          <text x="220" y={top - 7} fontSize="12" fill="#dc2626" fontWeight="bold">r = {r}</text>
+          <line x1={left - 14} y1={top} x2={left - 14} y2={bottom} stroke="#7c3aed" strokeWidth="1.5" />
+          <line x1={left - 18} y1={top} x2={left - 10} y2={top} stroke="#7c3aed" strokeWidth="1.5" />
+          <line x1={left - 18} y1={bottom} x2={left - 10} y2={bottom} stroke="#7c3aed" strokeWidth="1.5" />
+          <text x={left - 22} y="194" textAnchor="end" fontSize="12" fill="#6d28d9" fontWeight="bold">h = {h ?? 'h'}</text>
+        </g>
+      )}
     </g>
-  ),
-  1: ({ r }) => (
-    <g>
-      <ellipse cx="200" cy="120" rx="60" ry="20" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
-      <ellipse cx="200" cy="260" rx="60" ry="20" fill="#e0f2fe" stroke="#0284c7" strokeWidth="2" />
-      <rect x="140" y="120" width="120" height="140" fill="#f0f9ff" stroke="#0284c7" strokeWidth="2" />
-      <path d="M140 120 Q110 120 110 150 Q110 100 140 120" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
-      <path d="M260 120 Q290 120 290 150 Q290 100 260 120" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
-      <path d="M140 260 Q110 260 110 230 Q110 280 140 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
-      <path d="M260 260 Q290 260 290 230 Q290 280 260 260" fill="#bae6fd" stroke="#0284c7" strokeWidth="2"/>
-      {/* radius annotation */}
-      <line x1="200" y1="120" x2="260" y2="120" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
-      <text x="230" y="112" fontSize="13" fill="#dc2626" fontWeight="bold">r = {r ?? 'r'}</text>
-    </g>
-  ),
+  )
+}
+
+const cylinderHemispheresStages: Record<number, React.FC<StageProps>> = {
+  0: ({ config: { r, h } }) => <CapsuleDrawing r={r} h={h} />,
+  1: ({ config: { r, h } }) => <CapsuleDrawing r={r} h={h} annotate />,
 }
 
 // Hemisphere + cone (toy / ice cream)
-const hemisphereConeStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
-  0: () => (
+const hemisphereConeStages: Record<number, React.FC<StageProps>> = {
+  0: ({ config }) => <HemisphereConeDrawing config={config} />,
+  1: ({ config }) => <HemisphereConeDrawing config={config} annotate />,
+}
+
+function HemisphereConeDrawing({ config, annotate = false }: { config: DiagramConfig; annotate?: boolean }) {
+  const radius = 38
+  const coneHeight = config.h && config.r ? Math.min(140, Math.max(30, config.h / config.r * radius)) : 90
+  const joinY = 190
+  const apexY = joinY - coneHeight
+  const bottomY = joinY + radius
+  return (
     <g>
-      {/* Hemisphere base */}
-      <ellipse cx="200" cy="220" rx="80" ry="28" fill="#fef3c7" stroke="#d97706" strokeWidth="2" />
-      <path d="M120 220 Q120 150 200 150 Q280 150 280 220" fill="#fef9ee" stroke="#d97706" strokeWidth="2"/>
-      {/* Cone on top */}
-      <polygon points="200,60 120,220 280,220" fill="#fde68a" stroke="#d97706" strokeWidth="2"/>
-      <text x="200" y="200" textAnchor="middle" fontSize="12" fill="#92400e">Hemisphere</text>
-      <text x="200" y="145" textAnchor="middle" fontSize="12" fill="#92400e">Cone</text>
+      {/* Cone sits above the hemisphere; their flat circular bases coincide. */}
+      <polygon points={`200,${apexY} ${200 - radius},${joinY} ${200 + radius},${joinY}`} fill="#fde68a" stroke="#d97706" strokeWidth="2" />
+      <path d={`M ${200 - radius} ${joinY} A ${radius} ${radius} 0 0 1 ${200 + radius} ${joinY} L ${200 - radius} ${joinY} Z`} fill="#fef3c7" stroke="#d97706" strokeWidth="2" />
+      <line x1={200 - radius} y1={joinY} x2={200 + radius} y2={joinY} stroke="#92400e" strokeWidth="1.5" strokeDasharray="4 3" />
+      <text x="200" y={apexY + coneHeight * 0.52} textAnchor="middle" fontSize="12" fill="#92400e">Cone</text>
+      <text x="200" y={joinY + radius * 0.58} textAnchor="middle" fontSize="11" fill="#92400e">Hemisphere</text>
+      {annotate && <>
+        <line x1="200" y1={joinY} x2={200 + radius} y2={joinY} stroke="#dc2626" strokeWidth="1.5" />
+        <text x="220" y={joinY - 7} fontSize="12" fill="#dc2626" fontWeight="bold">r = {config.r} cm</text>
+        <line x1="250" y1={apexY} x2="250" y2={joinY} stroke="#2563eb" strokeWidth="1.5" />
+        <text x="258" y={(apexY + joinY) / 2} fontSize="12" fill="#1d4ed8">h = {config.h} cm</text>
+      </>}
+      <text x="200" y={bottomY + 24} textAnchor="middle" fontSize="10" fill="#475569">Shared circular base is internal, not part of the outside area</text>
     </g>
-  ),
-  1: ({ r }) => (
-    <g>
-      <ellipse cx="200" cy="220" rx="80" ry="28" fill="#fef3c7" stroke="#d97706" strokeWidth="2" />
-      <path d="M120 220 Q120 150 200 150 Q280 150 280 220" fill="#fef9ee" stroke="#d97706" strokeWidth="2"/>
-      <polygon points="200,60 120,220 280,220" fill="#fde68a" stroke="#d97706" strokeWidth="2"/>
-      <line x1="200" y1="220" x2="280" y2="220" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
-      <text x="240" y="215" fontSize="13" fill="#dc2626" fontWeight="bold">r = {r ?? 'r'}</text>
-    </g>
-  ),
+  )
 }
 
 // Cube with hemisphere on top (decorative block)
-const cubeHemisphereStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
-  0: () => (
+const cubeHemisphereStages: Record<number, React.FC<StageProps>> = {
+  0: ({ config }) => <CubeHemisphereDrawing config={config} />,
+  1: ({ config }) => <CubeHemisphereDrawing config={config} annotate />,
+}
+
+function CubeHemisphereDrawing({ config, annotate = false }: { config: DiagramConfig; annotate?: boolean }) {
+  const side = config.side ?? 5
+  const radiusValue = config.hemisphereRadius ?? config.r ?? 2.1
+  const sidePx = 180
+  const radiusPx = sidePx * radiusValue / side
+  const x = 200 - sidePx / 2
+  const top = 178
+  const bottom = top + sidePx
+  return (
     <g>
-      {/* Cube */}
-      <rect x="130" y="170" width="140" height="140" fill="#f0fdf4" stroke="#16a34a" strokeWidth="2"/>
-      <polygon points="130,170 170,130 310,130 270,170" fill="#dcfce7" stroke="#16a34a" strokeWidth="2"/>
-      <polygon points="270,170 310,130 310,270 270,310" fill="#bbf7d0" stroke="#16a34a" strokeWidth="2"/>
-      {/* Hemisphere */}
-      <ellipse cx="200" cy="170" rx="50" ry="17" fill="#d1fae5" stroke="#16a34a" strokeWidth="2"/>
-      <path d="M150 170 Q150 110 200 110 Q250 110 250 170" fill="#a7f3d0" stroke="#16a34a" strokeWidth="2"/>
-      <text x="200" y="250" textAnchor="middle" fontSize="12" fill="#14532d">Cube</text>
-      <text x="200" y="105" textAnchor="middle" fontSize="12" fill="#14532d">Hemisphere</text>
+      {/* Side elevation preserves the actual diameter-to-cube-side ratio. */}
+      <rect x={x} y={top} width={sidePx} height={sidePx} fill="#dcfce7" stroke="#16a34a" strokeWidth="2" />
+      <path d={`M ${200 - radiusPx} ${top} A ${radiusPx} ${radiusPx} 0 0 0 ${200 + radiusPx} ${top} L ${200 - radiusPx} ${top} Z`} fill="#a7f3d0" stroke="#16a34a" strokeWidth="2" />
+      <line x1={x} y1={top} x2={x + sidePx} y2={top} stroke="#14532d" strokeWidth="1.5" strokeDasharray="4 3" />
+      <text x="200" y="260" textAnchor="middle" fontSize="12" fill="#14532d">Cube</text>
+      <text x="200" y={top - radiusPx * 0.48} textAnchor="middle" fontSize="11" fill="#14532d">Hemisphere</text>
+      {annotate && <>
+        <line x1={x} y1={bottom + 15} x2={x + sidePx} y2={bottom + 15} stroke="#2563eb" strokeWidth="1.5" />
+        <text x="200" y={bottom + 32} textAnchor="middle" fontSize="11" fill="#1d4ed8">side = {side} cm</text>
+        <line x1="200" y1={top} x2={200 + radiusPx} y2={top} stroke="#dc2626" strokeWidth="1.5" />
+        <text x="210" y={top - 7} fontSize="11" fill="#b91c1c">r = {radiusValue} cm</text>
+      </>}
     </g>
-  ),
-  1: ({ r }) => (
-    <g>
-      <rect x="130" y="170" width="140" height="140" fill="#f0fdf4" stroke="#16a34a" strokeWidth="2"/>
-      <polygon points="130,170 170,130 310,130 270,170" fill="#dcfce7" stroke="#16a34a" strokeWidth="2"/>
-      <polygon points="270,170 310,130 310,270 270,310" fill="#bbf7d0" stroke="#16a34a" strokeWidth="2"/>
-      <ellipse cx="200" cy="170" rx="50" ry="17" fill="#d1fae5" stroke="#16a34a" strokeWidth="2"/>
-      <path d="M150 170 Q150 110 200 110 Q250 110 250 170" fill="#a7f3d0" stroke="#16a34a" strokeWidth="2"/>
-      <line x1="200" y1="170" x2="250" y2="170" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
-      <text x="225" y="165" fontSize="13" fill="#dc2626" fontWeight="bold">r = {r ?? 'r'}</text>
-    </g>
-  ),
+  )
 }
 
 // Frustum of a cone (drinking glass / bucket shape)
-const frustumStages: Record<number, React.FC<{ r: number; theta?: number }>> = {
-  0: () => (
+const frustumStages: Record<number, React.FC<StageProps>> = {
+  0: ({ config }) => <FrustumDrawing config={config} />,
+  1: ({ config }) => <FrustumDrawing config={config} annotate />,
+}
+
+function FrustumDrawing({ config, annotate = false }: { config: DiagramConfig; annotate?: boolean }) {
+  const topValue = config.topRadius ?? 7
+  const bottomValue = config.bottomRadius ?? config.r2 ?? 5
+  const maxRadius = Math.max(topValue, bottomValue, 1)
+  const scale = 105 / maxRadius
+  const topRx = topValue * scale
+  const bottomRx = bottomValue * scale
+  const topY = 90, bottomY = 285, cyTop = 18, cyBottom = 24
+  const h = config.h
+  return (
     <g>
-      {/* Frustum body */}
-      <polygon points="150,80 250,80 290,310 110,310" fill="#ede9fe" stroke="#7c3aed" strokeWidth="2"/>
-      <ellipse cx="200" cy="80" rx="50" ry="16" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
-      <ellipse cx="200" cy="310" rx="90" ry="28" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
-      <text x="200" y="200" textAnchor="middle" fontSize="12" fill="#4c1d95">Frustum of cone</text>
-      {/* Label r1, r2, h */}
-      <text x="155" y="74" fontSize="11" fill="#5b21b6">r₁</text>
-      <text x="295" y="315" fontSize="11" fill="#5b21b6">r₂</text>
+      <path d={`M ${200 - topRx} ${topY} L ${200 - bottomRx} ${bottomY} Q 200 ${bottomY + cyBottom} ${200 + bottomRx} ${bottomY} L ${200 + topRx} ${topY} Z`} fill="#ede9fe" stroke="#7c3aed" strokeWidth="2" />
+      {/* Open top rim; closed bottom disk. Radii follow the problem's top/bottom values. */}
+      <ellipse cx="200" cy={topY} rx={topRx} ry={cyTop} fill="#fff" stroke="#7c3aed" strokeWidth="2" />
+      <path d={`M ${200 - bottomRx} ${bottomY} Q 200 ${bottomY + cyBottom} ${200 + bottomRx} ${bottomY}`} fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2" />
+      <text x="200" y="188" textAnchor="middle" fontSize="12" fill="#4c1d95">Frustum</text>
+      {annotate && <>
+        <line x1="200" y1={topY} x2={200 + topRx} y2={topY} stroke="#2563eb" strokeWidth="1.5" strokeDasharray="4 2" />
+        <text x={200 + topRx / 2} y={topY - 7} textAnchor="middle" fontSize="11" fill="#1d4ed8">top r = {topValue} cm</text>
+        <line x1="200" y1={bottomY} x2={200 + bottomRx} y2={bottomY} stroke="#16a34a" strokeWidth="1.5" strokeDasharray="4 2" />
+        <text x={200 + bottomRx / 2} y={bottomY + 28} textAnchor="middle" fontSize="11" fill="#15803d">bottom r = {bottomValue} cm</text>
+        {h && <>
+          <line x1="75" y1={topY} x2="75" y2={bottomY} stroke="#dc2626" strokeWidth="1.5" />
+          <text x="62" y="190" textAnchor="end" fontSize="11" fill="#b91c1c">h = {h} cm</text>
+        </>}
+      </>}
     </g>
-  ),
-  1: ({ r }) => (
-    <g>
-      <polygon points="150,80 250,80 290,310 110,310" fill="#ede9fe" stroke="#7c3aed" strokeWidth="2"/>
-      <ellipse cx="200" cy="80" rx="50" ry="16" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
-      <ellipse cx="200" cy="310" rx="90" ry="28" fill="#ddd6fe" stroke="#7c3aed" strokeWidth="2"/>
-      {/* Height annotation */}
-      <line x1="105" y1="80" x2="105" y2="310" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 2"/>
-      <text x="88" y="200" fontSize="13" fill="#dc2626" fontWeight="bold">h</text>
-      {/* r1 top */}
-      <line x1="200" y1="80" x2="250" y2="80" stroke="#2563eb" strokeWidth="1.5" strokeDasharray="4 2"/>
-      <text x="222" y="72" fontSize="12" fill="#2563eb" fontWeight="bold">r₁</text>
-      {/* r2 bottom */}
-      <line x1="200" y1="310" x2="290" y2="310" stroke="#16a34a" strokeWidth="1.5" strokeDasharray="4 2"/>
-      <text x="242" y="328" fontSize="12" fill="#16a34a" fontWeight="bold">r₂</text>
-    </g>
-  ),
+  )
 }
 
 // Frustum + cylinder (metal bucket with handle)
@@ -1099,17 +1411,24 @@ export function GuidedDiagram({ stage, problemComplete = false, className = '', 
     problemType === 'sector'                 ? sectorStages :
     problemType === 'arc'                    ? arcStages :
     problemType === 'combination'            ? combinationStages :
+    problemType === 'circle-in-square'        ? circleInSquareStages :
     problemType === 'circles-in-square'      ? circlesInSquareStages :
-    problemType === 'mirror'                 ? mirrorStages :
-    problemType === 'lens'                   ? lensStages :
+    problemType === 'grazing-quarter'         ? grazingQuarterStages :
+    problemType === 'semicircle'              ? semicircleStages :
+    problemType === 'semicircles-in-square'   ? semicirclesInSquareStages :
+    problemType === 'mirror'                 ? accurateMirrorStages :
+    problemType === 'lens'                   ? accurateLensStages :
+    problemType === 'refraction'              ? refractionStages :
     problemType === 'cylinder-hemispheres'   ? cylinderHemispheresStages :
     problemType === 'hemisphere-cone'        ? hemisphereConeStages :
     problemType === 'cube-hemisphere'        ? cubeHemisphereStages :
     problemType === 'cylinder-base-hemisphere' ? cylinderBaseHemisphereStages :
     problemType === 'frustum'                ? frustumStages :
     problemType === 'frustum-cylinder'       ? frustumCylinderStages :
-    // 'none' or 'segment' — fall through to segment (segment handles unknown)
-    segmentStages
+    problemType === 'sphere-cylinder'         ? sphereCylinderStages :
+    problemType === 'well-embankment'         ? wellEmbankmentStages :
+    problemType === 'segment'             ? segmentStages :
+    noDiagramStages
 
   const maxStage = Object.keys(stageMap).length - 1
   const clampedStage = Math.max(0, Math.min(maxStage, Math.round(stage)))
@@ -1123,6 +1442,11 @@ export function GuidedDiagram({ stage, problemComplete = false, className = '', 
       aria-label={`Diagram stage ${clampedStage}`}
       role="img"
     >
+      <defs>
+        <marker id="guided-diagram-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M 0 0 L 8 4 L 0 8 Z" fill="#64748b" />
+        </marker>
+      </defs>
       <Renderer problemComplete={problemComplete} config={resolvedConfig} />
     </svg>
   )

@@ -78,6 +78,7 @@ export async function GET(
           isActive: true,
           rawText: true,
           concreteRestatement: true,
+          problemType: true,
           givens: true,
           impliedGivens: true,
           unknownAnnotation: true,
@@ -90,31 +91,37 @@ export async function GET(
     return NextResponse.json({ error: 'Guided problem not found' }, { status: 404 })
   }
 
-  // Parse radius/diameter and angle from rawText for diagram rendering.
   const rawTextLC = guidedProblem.problem.rawText.toLowerCase()
-  const radiusMatch = rawTextLC.match(/radius[^0-9]*([0-9]+(?:\.5)?)/)
-  const diameterMatch = rawTextLC.match(/diameter[^0-9]*([0-9]+(?:\.5)?)/)
-  const thetaMatch = rawTextLC.match(/angle[^0-9]*([0-9]+)/)
+  const storedProblemType = guidedProblem.problem.problemType.toLowerCase()
+  const number = (pattern: RegExp) => {
+    const match = rawTextLC.match(pattern)
+    return match ? Number(match[1]) : undefined
+  }
+  const radiusFromText = number(/radius[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const diameter = number(/diameter[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const theta = number(/angle[^0-9]*([0-9]+)/) ?? 90
+  const side = number(/side(?: length)?[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
 
-  // Select a matching visual from the shapes named in the problem. Unknown
-  // shapes deliberately get no diagram; showing a segment for every new type
-  // makes the visual misleading.
   type GuidedDiagramType =
-    | 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square'
-    | 'mirror' | 'lens' | 'cylinder-hemispheres' | 'hemisphere-cone'
-    | 'cube-hemisphere' | 'cylinder-base-hemisphere' | 'frustum'
-    | 'frustum-cylinder' | 'none'
+    | 'sector' | 'arc' | 'segment' | 'combination' | 'circle-in-square'
+    | 'circles-in-square' | 'grazing-quarter' | 'semicircle' | 'semicircles-in-square'
+    | 'mirror' | 'lens' | 'refraction' | 'cylinder-hemispheres' | 'hemisphere-cone'
+    | 'cube-hemisphere' | 'cylinder-base-hemisphere' | 'frustum' | 'frustum-cylinder'
+    | 'sphere-cylinder' | 'well-embankment' | 'none'
   let problemType: GuidedDiagramType = 'none'
-  if (
-    rawTextLC.includes('capsule') ||
-    (rawTextLC.includes('cylinder') && rawTextLC.includes('hemispheres') &&
-      (rawTextLC.includes('two hemispheres') || rawTextLC.includes('both ends') || rawTextLC.includes('each end')))
-  ) {
+
+  // Check the composite and optical cases first so generic words such as
+  // “circle”, “square”, and “lens” cannot select an unrelated picture.
+  if (rawTextLC.includes('cylinder') && rawTextLC.includes('hemispher') && /end|capsule|gulab jamun/.test(rawTextLC)) {
     problemType = 'cylinder-hemispheres'
   } else if (rawTextLC.includes('frustum') && rawTextLC.includes('cylinder')) {
     problemType = 'frustum-cylinder'
   } else if (rawTextLC.includes('frustum')) {
     problemType = 'frustum'
+  } else if (rawTextLC.includes('well') && rawTextLC.includes('embankment')) {
+    problemType = 'well-embankment'
+  } else if (rawTextLC.includes('sphere') && rawTextLC.includes('recast') && rawTextLC.includes('cylinder')) {
+    problemType = 'sphere-cylinder'
   } else if (rawTextLC.includes('cube') && rawTextLC.includes('hemisphere')) {
     problemType = 'cube-hemisphere'
   } else if (rawTextLC.includes('cone') && rawTextLC.includes('hemisphere')) {
@@ -123,32 +130,76 @@ export async function GET(
     problemType = 'cylinder-base-hemisphere'
   } else if (rawTextLC.includes('four circles') && rawTextLC.includes('square')) {
     problemType = 'circles-in-square'
+  } else if (rawTextLC.includes('horse') && rawTextLC.includes('rope') && rawTextLC.includes('square field')) {
+    problemType = 'grazing-quarter'
+  } else if (rawTextLC.includes('semicircles') && rawTextLC.includes('square')) {
+    problemType = 'semicircles-in-square'
+  } else if (rawTextLC.includes('semicircle') || rawTextLC.includes('brooch')) {
+    problemType = 'semicircle'
+  } else if (rawTextLC.includes('square inscribed') && rawTextLC.includes('circle')) {
+    problemType = 'combination'
+  } else if (rawTextLC.includes('circle') && rawTextLC.includes('square') && /circle[^.]*inscribed (?:inside|in)/.test(rawTextLC)) {
+    problemType = 'circle-in-square'
+  } else if (
+    rawTextLC.includes('ray of light') || rawTextLC.includes('refractive') ||
+    rawTextLC.includes('refraction') || rawTextLC.includes('critical angle') ||
+    rawTextLC.includes('speed of light')
+  ) {
+    problemType = 'refraction'
+  } else if (storedProblemType.includes('mirror') || rawTextLC.includes('mirror')) {
+    problemType = 'mirror'
   } else if (rawTextLC.includes('lens')) {
     problemType = 'lens'
-  } else if (rawTextLC.includes('mirror')) {
-    problemType = 'mirror'
   } else if (rawTextLC.includes('arc') && rawTextLC.includes('length')) {
     problemType = 'arc'
-  } else if (rawTextLC.includes('area of a sector') || rawTextLC.includes('area of the sector')) {
+  } else if (rawTextLC.includes('sector')) {
     problemType = 'sector'
-  } else if (
-    rawTextLC.includes('square') ||
-    rawTextLC.includes('horse') ||
-    rawTextLC.includes('brooch') ||
-    rawTextLC.includes('semicircle') ||
-    rawTextLC.includes('inscribed')
-  ) {
-    problemType = 'combination'
   } else if (rawTextLC.includes('segment') || rawTextLC.includes('chord')) {
     problemType = 'segment'
   }
 
-  const parsedRadius = radiusMatch ? Number(radiusMatch[1]) : diameterMatch ? Number(diameterMatch[1]) / 2 : 15
+  const parsedRadius = radiusFromText ?? (diameter !== undefined ? diameter / 2 :
+    problemType === 'grazing-quarter' ? number(/rope[^0-9]*([0-9]+(?:\.[0-9]+)?)/) ?? 15 :
+    problemType === 'circle-in-square' && side ? side / 2 : 15)
+  const lengthValues = [...rawTextLC.matchAll(/(?:length|height)[^0-9]*([0-9]+(?:\.[0-9]+)?)/g)].map((m) => Number(m[1]))
+  const capsuleLength = number(/length[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const radiiMatch = rawTextLC.match(/radii[^0-9]*([0-9]+(?:\.[0-9]+)?)[^0-9]+([0-9]+(?:\.[0-9]+)?)/)
+  const focalLength = number(/focal length[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const objectDistance = number(/object(?: distance| is placed| is)?[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const imageDistance = number(/image(?: distance| is formed| formed| at)?[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const coneHeight = number(/height of the cone[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const totalHeight = number(/total height[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const incidence = number(/angle of incidence[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const refraction = number(/angle of refraction[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const hemisphereDiameter = number(/hemisphere[^.]*diameter[^0-9]*([0-9]+(?:\.[0-9]+)?)/)
+  const radiusValues = [...rawTextLC.matchAll(/radius[^0-9]*([0-9]+(?:\.[0-9]+)?)/g)].map((m) => Number(m[1]))
+  let diagramHeight: number | undefined
+  if (problemType === 'cylinder-hemispheres' && capsuleLength !== undefined) diagramHeight = capsuleLength - 2 * parsedRadius
+  if (problemType === 'hemisphere-cone') diagramHeight = coneHeight ?? (rawTextLC.includes('equal to its radius') ? parsedRadius : totalHeight ? totalHeight - parsedRadius : undefined)
+  if (problemType === 'cube-hemisphere') diagramHeight = side
+  if (problemType === 'frustum' || problemType === 'frustum-cylinder') diagramHeight = lengthValues[0]
+  if (problemType === 'well-embankment') diagramHeight = number(/([0-9]+(?:\.[0-9]+)?) m deep/)
+
   const diagramConfig = {
     r: parsedRadius,
-    theta: thetaMatch ? Number(thetaMatch[1]) : 90,
+    r2: radiiMatch ? Number(radiiMatch[2]) : undefined,
+    side,
+    h: diagramHeight,
+    f: focalLength,
+    u: objectDistance,
+    v: imageDistance,
+    isConvex: rawTextLC.includes('convex'),
+    angleOfIncidence: incidence,
+    angleOfRefraction: refraction,
+    criticalAngle: rawTextLC.includes('critical angle'),
+    theta,
     isMajorSegment: rawTextLC.includes('major'),
     problemType,
+    // Retain both radii so frustum sketches can match the stated top/bottom ratio.
+    topRadius: radiiMatch ? Number(radiiMatch[1]) : radiusValues[0],
+    bottomRadius: radiiMatch ? Number(radiiMatch[2]) : radiusValues[1],
+    hemisphereRadius: hemisphereDiameter ? hemisphereDiameter / 2 : undefined,
+    cylinderRadius: radiusValues[1],
   }
 
   const problemInfo = {

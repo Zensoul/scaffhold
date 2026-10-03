@@ -57,8 +57,22 @@ type ProblemInfo = {
   diagramConfig: {
     r: number
     theta: number
+    h?: number
     isMajorSegment?: boolean
-    problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circles-in-square' | 'mirror' | 'lens' | 'cylinder-hemispheres' | 'hemisphere-cone' | 'cube-hemisphere' | 'cylinder-base-hemisphere' | 'frustum' | 'frustum-cylinder' | 'none'
+    problemType?: 'sector' | 'arc' | 'segment' | 'combination' | 'circle-in-square' | 'circles-in-square' | 'grazing-quarter' | 'semicircle' | 'semicircles-in-square' | 'mirror' | 'lens' | 'refraction' | 'cylinder-hemispheres' | 'hemisphere-cone' | 'cube-hemisphere' | 'cylinder-base-hemisphere' | 'frustum' | 'frustum-cylinder' | 'sphere-cylinder' | 'well-embankment' | 'none'
+    r2?: number
+    topRadius?: number
+    bottomRadius?: number
+    hemisphereRadius?: number
+    cylinderRadius?: number
+    side?: number
+    f?: number
+    u?: number
+    v?: number
+    isConvex?: boolean
+    angleOfIncidence?: number
+    angleOfRefraction?: number
+    criticalAngle?: boolean
   }
 }
 
