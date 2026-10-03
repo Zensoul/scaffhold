@@ -260,7 +260,7 @@ async function seedFRUS1() {
 // A frustum-shaped bucket: r1=20cm (top), r2=8cm (bottom), h=16cm.
 // Find (i) volume and (ii) curved SA.
 // l = √(16² + 12²) = √(256+144) = √400 = 20 cm  (3-4-5 triple scaled by 4)
-// V = (πh/3)(r1²+r2²+r1r2) = (π×16/3)(400+64+160) = (16π/3)(624) = 3328π ≈ 10450.3 cm³
+// V = (πh/3)(r1²+r2²+r1r2) = (22/7×16/3)(400+64+160) = 73216/7 ≈ 10459.43 cm³
 // CSA = π(r1+r2)l = π×28×20 = 560π ≈ 1759 cm²
 
 const FRUS2_FORMULA_CARD = `Frustum of cone (bucket):
@@ -322,16 +322,16 @@ async function seedFRUS2() {
       stepLabel:   'Step 2 of 3 — Calculate volume',
       prompt:      'V = (πh/3)(r₁²+r₂²+r₁r₂). With h=16, r₁=20, r₂=8, calculate the volume in cm³. (Use π = 22/7)',
       inputType:   'numeric',
-      correctAnswer: '10450',
-      tolerance:   10,
+      correctAnswer: '10459.43',
+      tolerance:   0.02,
       hintText:    'r₁²+r₂²+r₁r₂ = 400+64+160 = 624. V = (22/7 × 16/3) × 624.',
-      hintText2:   '(22/7 × 16/3) = 352/21. V = 352/21 × 624 = 219648/21 ≈ 10450 cm³.',
+      hintText2:   '(22/7 × 16/3) = 352/21. V = 352/21 × 624 = 219648/21 = 73216/7 ≈ 10459.43 cm³.',
       hintText3:   null,
-      errorFeedback: '400+64+160=624. V = (22/7)(16/3)(624) = (22×16×624)/(7×3) = 219648/21 ≈ 10450 cm³.',
+      errorFeedback: '400+64+160=624. V = (22/7)(16/3)(624) = 219648/21 = 73216/7 ≈ 10459.43 cm³.',
       formulaCard: FRUS2_FORMULA_CARD,
       svgStage:    1,
       unit:        'cm³',
-      workedExampleText:   'r₁²+r₂²+r₁r₂ = 400+64+(20×8) = 400+64+160 = 624\nV = (22/7) × (16/3) × 624\n= (22 × 16 × 624) / 21\n= 219648 / 21\n≈ 10450 cm³',
+      workedExampleText:   'r₁²+r₂²+r₁r₂ = 400+64+(20×8) = 400+64+160 = 624\nV = (22/7) × (16/3) × 624\n= (22 × 16 × 624) / 21\n= 219648 / 21 = 73216 / 7\n≈ 10459.43 cm³',
       workedExampleSvgStage: 1,
       selfExplainPrompt:   'The term r₁r₂ = 20×8 = 160 appears in the volume formula. What would happen to the volume if r₁ = r₂ = r (making it a cylinder)? Verify the formula simplifies to the cylinder formula.',
       selfExplainAnswer:   'If r₁=r₂=r: r₁²+r₂²+r₁r₂ = r²+r²+r² = 3r². Then V = (πh/3)(3r²) = πr²h. That\'s exactly the cylinder formula! The frustum formula generalizes the cylinder.',
@@ -353,8 +353,8 @@ async function seedFRUS2() {
       unit:        'cm²',
       workedExampleText:   'CSA = π(r₁+r₂)l\n= (22/7) × (20+8) × 20\n= (22/7) × 28 × 20\n= 22 × 4 × 20          [28÷7 = 4]\n= 1760 cm²',
       workedExampleSvgStage: 1,
-      selfExplainPrompt:   'Both volume (~10450 cm³) and CSA (1760 cm²) have been found. If this bucket is filled with water to the brim, roughly how many litres does it hold? (1 L = 1000 cm³)',
-      selfExplainAnswer:   '10450 cm³ ÷ 1000 = 10.45 litres. A reasonable bucket capacity — a typical bucket holds 10–15 litres, confirming the answer is in the right ballpark.',
+      selfExplainPrompt:   'Both volume (~10459.43 cm³) and CSA (1760 cm²) have been found. If this bucket is filled with water to the brim, roughly how many litres does it hold? (1 L = 1000 cm³)',
+      selfExplainAnswer:   '10459.43 cm³ ÷ 1000 ≈ 10.46 litres.',
     },
   ])
 }

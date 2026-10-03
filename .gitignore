@@ -36,6 +36,23 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Local Manim renders, caches, and intermediate video frames.
+/manim-rendered/
+/media/
+**/__pycache__/
+*.py[cod]
+
+# Generated snapshots from one-off draft reviews.
+/scripts/data/pending-drafts-dump.txt
+/scripts/data/pending-drafts-index.json
+
+# Local deletion stash and obsolete one-off migration duplicate.
+/_to_delete/
+/add-followup-migration.sql
+
+# Accidental scratch path colliding with the Windows NUL device name.
+/nul
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -46,3 +63,7 @@ next-env.d.ts
 .env.sentry-build-plugin
 
 .vercel
+
+# AI-generated guided/prerequisite drafts stay local until a person reviews and approves them.
+/scripts/data/guided-flow-drafts/
+/scripts/data/prerequisite-drafts/*.json

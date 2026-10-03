@@ -643,24 +643,29 @@ const semicircleStages: Record<number, (props: StageProps) => JSX.Element> = {
 }
 
 const semicirclesInSquareStages: Record<number, (props: StageProps) => JSX.Element> = {
-  0: ({ config: { side } }) => {
-    const x = 80, y = 65, size = 240, count = 4, segment = size / count, radius = segment / 2
-    return (
-      <g>
-        <rect x={x} y={y} width={size} height={size} fill="#fff" stroke="#475569" strokeWidth="2" />
-        {Array.from({ length: count }, (_, i) => {
-          const offset = i * segment
-          return <g key={i}>
-            <path d={`M ${x + offset} ${y} A ${radius} ${radius} 0 0 1 ${x + offset + segment} ${y}`} fill="none" stroke="#d97706" strokeWidth="2" />
-            <path d={`M ${x + offset + segment} ${y + size} A ${radius} ${radius} 0 0 0 ${x + offset} ${y + size}`} fill="none" stroke="#d97706" strokeWidth="2" />
-            <path d={`M ${x} ${y + offset} A ${radius} ${radius} 0 0 1 ${x} ${y + offset + segment}`} fill="none" stroke="#2563eb" strokeWidth="2" />
-            <path d={`M ${x + size} ${y + offset + segment} A ${radius} ${radius} 0 0 1 ${x + size} ${y + offset}`} fill="none" stroke="#2563eb" strokeWidth="2" />
-          </g>
-        })}
-        <text x="200" y="332" textAnchor="middle" fontSize="11" fill="#334155">4 equal inward semicircles on each side · side = {side} cm</text>
-      </g>
-    )
-  },
+  0: ({ config: { side } }) => <SemicircleOverlapDrawing side={side} showOverlap={false} />,
+  1: ({ config: { side } }) => <SemicircleOverlapDrawing side={side} showOverlap />,
+}
+
+function SemicircleOverlapDrawing({ side, showOverlap }: { side?: number; showOverlap: boolean }) {
+  const squareX = 80, squareY = 65, size = 240, radius = size / 2
+  const lens = `M ${squareX} ${squareY} A ${radius} ${radius} 0 0 0 200 185 A ${radius} ${radius} 0 0 0 ${squareX} ${squareY} Z`
+  return (
+    <g>
+      <rect x={squareX} y={squareY} width={size} height={size} fill="#fff" stroke="#475569" strokeWidth="2" />
+      {showOverlap && [0, 90, 180, 270].map((angle) => (
+        <path key={angle} d={lens} transform={`rotate(${angle} 200 185)`} fill="#fbbf24" fillOpacity="0.48" stroke="#d97706" strokeWidth="1" />
+      ))}
+      {/* Four inward semicircles, one on each full side of the square. */}
+      <path d={`M ${squareX} ${squareY} A ${radius} ${radius} 0 0 0 ${squareX + size} ${squareY}`} fill="none" stroke="#d97706" strokeWidth="2.5" />
+      <path d={`M ${squareX + size} ${squareY} A ${radius} ${radius} 0 0 0 ${squareX + size} ${squareY + size}`} fill="none" stroke="#2563eb" strokeWidth="2.5" />
+      <path d={`M ${squareX + size} ${squareY + size} A ${radius} ${radius} 0 0 0 ${squareX} ${squareY + size}`} fill="none" stroke="#d97706" strokeWidth="2.5" />
+      <path d={`M ${squareX} ${squareY + size} A ${radius} ${radius} 0 0 0 ${squareX} ${squareY}`} fill="none" stroke="#2563eb" strokeWidth="2.5" />
+      <text x="200" y="332" textAnchor="middle" fontSize="11" fill="#334155">
+        {showOverlap ? 'Four overlap lenses shaded' : 'One inward semicircle on each side'} · side = {side} cm
+      </text>
+    </g>
+  )
 }
 
 const refractionStages: Record<number, (props: StageProps) => JSX.Element> = {
