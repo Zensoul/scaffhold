@@ -25,8 +25,15 @@ export async function fetchStudentChapters(studentId: string): Promise<ChapterRo
 
   const assignments = await prisma.chapterAssignment.findMany({
     where: { studentId },
-    include: {
-      chapter: { include: { subject: true } },
+    select: {
+      chapterId: true,
+      chapter: {
+        select: {
+          name: true,
+          sequenceNumber: true,
+          subject: { select: { name: true } },
+        },
+      },
     },
     orderBy: { chapter: { sequenceNumber: 'asc' } },
   })
@@ -38,11 +45,25 @@ export async function fetchStudentChapters(studentId: string): Promise<ChapterRo
   const [levels, recentSessions] = await Promise.all([
     prisma.scaffoldingLevel.findMany({
       where: { studentId, chapterId: { in: chapterIds } },
+      select: {
+        chapterId: true,
+        currentLevel: true,
+        problemsAttempted: true,
+        problemsClean: true,
+      },
     }),
     prisma.session.findMany({
       where: { studentId, chapterId: { in: chapterIds } },
       orderBy: { startedAt: 'desc' },
       take: 20,
+      select: {
+        id: true,
+        chapterId: true,
+        startedAt: true,
+        endedAt: true,
+        endReason: true,
+        problemsAttempted: true,
+      },
     }),
   ])
   console.log(`[fetchStudentChapters] levels+sessions parallel: ${Date.now() - tParallel}ms`)

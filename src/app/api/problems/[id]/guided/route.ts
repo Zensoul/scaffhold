@@ -66,26 +66,38 @@ export async function GET(
     throw err
   }
 
-  const guidedProblem = await prisma.guidedSolveProblem.findUnique({
-    where: { problemId: id },
-    include: {
-      steps: {
-        orderBy: { sequenceOrder: 'asc' },
-        include: { options: { orderBy: { orderIndex: 'asc' } } },
-      },
-      problem: {
-        select: {
-          isActive: true,
-          rawText: true,
-          concreteRestatement: true,
-          problemType: true,
-          givens: true,
-          impliedGivens: true,
-          unknownAnnotation: true,
+  const [guidedProblem, attemptGroups] = await Promise.all([
+    prisma.guidedSolveProblem.findUnique({
+      where: { problemId: id },
+      include: {
+        steps: {
+          orderBy: { sequenceOrder: 'asc' },
+          include: { options: { orderBy: { orderIndex: 'asc' } } },
+        },
+        problem: {
+          select: {
+            isActive: true,
+            rawText: true,
+            concreteRestatement: true,
+            problemType: true,
+            givens: true,
+            impliedGivens: true,
+            unknownAnnotation: true,
+          },
         },
       },
-    },
-  })
+    }),
+    // Read both correct and incorrect counts in one small aggregate query.
+    // This replaces separate findMany + count round trips on every step load.
+    prisma.solveAttempt.groupBy({
+      by: ['stepId', 'isCorrect', 'sessionId'],
+      where: {
+        studentId,
+        step: { guidedSolveProblem: { problemId: id } },
+      },
+      _count: { _all: true },
+    }),
+  ])
 
   if (!guidedProblem || !guidedProblem.problem.isActive) {
     return NextResponse.json({ error: 'Guided problem not found' }, { status: 404 })
@@ -214,18 +226,15 @@ export async function GET(
   const totalSteps = guidedProblem.steps.length
 
   // Find which steps the student has already answered correctly in this session
+  const attemptCounts = new Map<string, { correct: number; wrong: number }>()
+  for (const group of attemptGroups) {
+    const counts = attemptCounts.get(group.stepId) ?? { correct: 0, wrong: 0 }
+    if (group.isCorrect && group.sessionId === sessionId) counts.correct += group._count._all
+    else if (!group.isCorrect) counts.wrong += group._count._all
+    attemptCounts.set(group.stepId, counts)
+  }
   const correctStepIds = new Set(
-    (
-      await prisma.solveAttempt.findMany({
-        where: {
-          sessionId,
-          studentId,
-          isCorrect: true,
-          stepId: { in: guidedProblem.steps.map((s) => s.id) },
-        },
-        select: { stepId: true },
-      })
-    ).map((a) => a.stepId)
+    [...attemptCounts].filter(([, counts]) => counts.correct > 0).map(([stepId]) => stepId)
   )
 
   const answeredSoFar = correctStepIds.size
@@ -260,9 +269,7 @@ export async function GET(
   const nextStep = guidedProblem.steps.find((s) => !correctStepIds.has(s.id))!
 
   // Count prior wrong attempts on this step
-  const attemptCount = await prisma.solveAttempt.count({
-    where: { studentId, stepId: nextStep.id, isCorrect: false },
-  })
+  const attemptCount = attemptCounts.get(nextStep.id)?.wrong ?? 0
 
   const showHint = attemptCount >= 1
   const showWorkedExample =
@@ -343,22 +350,32 @@ export async function POST(
     return NextResponse.json({ error: 'sessionId, stepId and answer are required' }, { status: 400 })
   }
 
-  const step = await prisma.solveStep.findUnique({
-    where: { id: stepId },
-    include: {
-      guidedSolveProblem: { select: { problemId: true } },
-      options: true,
-    },
-  })
+  // These reads don't depend on each other; run them together to avoid
+  // stacking database network round trips before recording the answer.
+  const [step, alreadyCorrect, priorWrong] = await Promise.all([
+    prisma.solveStep.findUnique({
+      where: { id: stepId },
+      include: {
+        guidedSolveProblem: {
+          select: { problemId: true, _count: { select: { steps: true } } },
+        },
+        options: true,
+      },
+    }),
+    prisma.solveAttempt.findFirst({
+      where: { studentId, stepId, sessionId, isCorrect: true },
+      select: { id: true },
+    }),
+    prisma.solveAttempt.count({
+      where: { studentId, stepId, isCorrect: false },
+    }),
+  ])
 
   if (!step || step.guidedSolveProblem.problemId !== id) {
     return NextResponse.json({ error: 'Step not found' }, { status: 404 })
   }
 
   // Guard: don't re-accept a step that's already been answered correctly
-  const alreadyCorrect = await prisma.solveAttempt.findFirst({
-    where: { studentId, stepId, sessionId, isCorrect: true },
-  })
   if (alreadyCorrect) {
     return NextResponse.json({ error: 'Step already answered correctly' }, { status: 409 })
   }
@@ -383,10 +400,6 @@ export async function POST(
   }
 
   // Count prior wrong attempts (before recording this one)
-  const priorWrong = await prisma.solveAttempt.count({
-    where: { studentId, stepId, isCorrect: false },
-  })
-
   const attemptNumber = priorWrong + 1
 
   // Record the attempt
@@ -401,34 +414,38 @@ export async function POST(
     },
   })
 
+  // Only the final guided step can complete the problem. Avoid three
+  // completion-check queries after every earlier correct answer.
   if (isCorrect) {
-    // Check if all steps are now complete — if so, record a sessionInteraction
-    // so selectNextProblem knows this problem has been attempted.
-    const guidedProblem = await prisma.guidedSolveProblem.findUnique({
-      where: { problemId: id },
-      include: { steps: { select: { id: true } } },
-    })
-    if (guidedProblem) {
-      const allStepIds = guidedProblem.steps.map((s) => s.id)
-      const correctCount = await prisma.solveAttempt.count({
-        where: { studentId, sessionId, isCorrect: true, stepId: { in: allStepIds } },
+    if (step.sequenceOrder === step.guidedSolveProblem._count.steps) {
+      // Check if all steps are now complete — if so, record a sessionInteraction
+      // so selectNextProblem knows this problem has been attempted.
+      const guidedProblem = await prisma.guidedSolveProblem.findUnique({
+        where: { problemId: id },
+        include: { steps: { select: { id: true } } },
       })
-      if (correctCount >= allStepIds.length) {
-        // All steps done — mark this problem as completed in sessionInteraction
-        const existing = await prisma.sessionInteraction.findFirst({
-          where: { studentId, sessionId, problemId: id, interactionType: InteractionType.problem_completed },
+      if (guidedProblem) {
+        const allStepIds = guidedProblem.steps.map((s) => s.id)
+        const correctCount = await prisma.solveAttempt.count({
+          where: { studentId, sessionId, isCorrect: true, stepId: { in: allStepIds } },
         })
-        if (!existing) {
-          await prisma.sessionInteraction.create({
-            data: {
-              sessionId,
-              studentId,
-              problemId: id,
-              interactionType: InteractionType.problem_completed,
-              isCorrect: true,
-              scaffoldingLevelAt: 0.5,
-            },
+        if (correctCount >= allStepIds.length) {
+          // All steps done — mark this problem as completed in sessionInteraction
+          const existing = await prisma.sessionInteraction.findFirst({
+            where: { studentId, sessionId, problemId: id, interactionType: InteractionType.problem_completed },
           })
+          if (!existing) {
+            await prisma.sessionInteraction.create({
+              data: {
+                sessionId,
+                studentId,
+                problemId: id,
+                interactionType: InteractionType.problem_completed,
+                isCorrect: true,
+                scaffoldingLevelAt: 0.5,
+              },
+            })
+          }
         }
       }
     }

@@ -541,7 +541,7 @@ export default function GuidedPage() {
         setTimeout(() => {
           setCorrectFlash(false)
           fetchStep()
-        }, 900)
+        }, 250)
       } else {
         setFeedback({
           errorFeedback: json.errorFeedback,
