@@ -1297,23 +1297,74 @@ function CubeHemisphereDrawing({ config, annotate = false }: { config: DiagramCo
   const radiusValue = config.hemisphereRadius ?? config.r ?? 2.1
   const sidePx = 180
   const radiusPx = sidePx * radiusValue / side
-  const x = 200 - sidePx / 2
-  const top = 178
+  const centerX = 200
+  const x = centerX - sidePx / 2
+  const top = 140
   const bottom = top + sidePx
+  const baseLeft = centerX - radiusPx
+  const baseRight = centerX + radiusPx
+  const domeTop = top - radiusPx
+
   return (
     <g>
-      {/* Side elevation preserves the actual diameter-to-cube-side ratio. */}
-      <rect x={x} y={top} width={sidePx} height={sidePx} fill="#dcfce7" stroke="#16a34a" strokeWidth="2" />
-      <path d={`M ${200 - radiusPx} ${top} A ${radiusPx} ${radiusPx} 0 0 0 ${200 + radiusPx} ${top} L ${200 - radiusPx} ${top} Z`} fill="#a7f3d0" stroke="#16a34a" strokeWidth="2" />
-      <line x1={x} y1={top} x2={x + sidePx} y2={top} stroke="#14532d" strokeWidth="1.5" strokeDasharray="4 3" />
-      <text x="200" y="260" textAnchor="middle" fontSize="12" fill="#14532d">Cube</text>
-      <text x="200" y={top - radiusPx * 0.48} textAnchor="middle" fontSize="11" fill="#14532d">Hemisphere</text>
-      {annotate && <>
-        <line x1={x} y1={bottom + 15} x2={x + sidePx} y2={bottom + 15} stroke="#2563eb" strokeWidth="1.5" />
-        <text x="200" y={bottom + 32} textAnchor="middle" fontSize="11" fill="#1d4ed8">side = {side} cm</text>
-        <line x1="200" y1={top} x2={200 + radiusPx} y2={top} stroke="#dc2626" strokeWidth="1.5" />
-        <text x="210" y={top - 7} fontSize="11" fill="#b91c1c">r = {radiusValue} cm</text>
-      </>}
+      {/* Side elevation: the solid hemisphere bulges above the cube. */}
+      <rect x={x} y={top} width={sidePx} height={sidePx} fill="#dcfce7" />
+      <path
+        d={`M ${baseLeft} ${top} A ${radiusPx} ${radiusPx} 0 0 1 ${baseRight} ${top} L ${baseLeft} ${top} Z`}
+        fill="#a7f3d0"
+      />
+
+      {/* Cube outline; its top edge is visible only outside the hemisphere footprint. */}
+      <path
+        d={`M ${x} ${top} V ${bottom} H ${x + sidePx} V ${top}`}
+        fill="none"
+        stroke="#16a34a"
+        strokeWidth="2"
+      />
+      <line x1={x} y1={top} x2={baseLeft} y2={top} stroke="#16a34a" strokeWidth="2" />
+      <line x1={baseRight} y1={top} x2={x + sidePx} y2={top} stroke="#16a34a" strokeWidth="2" />
+
+      {/* The shared circular base is internal; show only its hidden diameter as a dashed line. */}
+      <line
+        x1={baseLeft}
+        y1={top}
+        x2={baseRight}
+        y2={top}
+        stroke="#15803d"
+        strokeWidth="1.5"
+        strokeDasharray="4 3"
+      />
+      <path
+        d={`M ${baseLeft} ${top} A ${radiusPx} ${radiusPx} 0 0 1 ${baseRight} ${top}`}
+        fill="none"
+        stroke="#16a34a"
+        strokeWidth="2"
+      />
+
+      <text x={centerX} y={top - radiusPx * 0.42} textAnchor="middle" fontSize="11" fill="#14532d">
+        Hemisphere
+      </text>
+      <text x={centerX} y={top + sidePx * 0.62} textAnchor="middle" fontSize="12" fill="#14532d">
+        Cube
+      </text>
+
+      {annotate && (
+        <>
+          <line x1={baseLeft} y1={top} x2={baseLeft} y2={domeTop - 10} stroke="#2563eb" strokeWidth="1" />
+          <line x1={baseRight} y1={top} x2={baseRight} y2={domeTop - 10} stroke="#2563eb" strokeWidth="1" />
+          <line x1={baseLeft} y1={domeTop - 10} x2={baseRight} y2={domeTop - 10} stroke="#2563eb" strokeWidth="1.5" />
+          <text x={centerX} y={domeTop - 16} textAnchor="middle" fontSize="11" fill="#1d4ed8">
+            base diameter = {Number((radiusValue * 2).toFixed(2))} cm
+          </text>
+          <line x1={x} y1={bottom + 13} x2={x + sidePx} y2={bottom + 13} stroke="#2563eb" strokeWidth="1.5" />
+          <text x={centerX} y={bottom + 30} textAnchor="middle" fontSize="11" fill="#1d4ed8">
+            cube side = {side} cm
+          </text>
+        </>
+      )}
+      <text x={centerX} y="374" textAnchor="middle" fontSize="10" fill="#475569">
+        Side view · shared circular base is internal, not exposed
+      </text>
     </g>
   )
 }
