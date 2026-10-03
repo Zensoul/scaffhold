@@ -107,10 +107,16 @@ const STEP_TYPE_LABEL: Record<string, string> = {
   substitution: 'Fill in values',
   computation: 'Calculate',
 }
-const STEP_TYPE_EXPLANATION: Record<string, string> = {
-  concept: 'Identify the right approach before calculating anything.',
-  substitution: 'Plug the known values into the formula.',
-  computation: 'Work out the number — use a calculator if needed.',
+function getStepPurpose(step: GuidedStep): string {
+  if (step.stepType === 'concept') {
+    return 'Choosing the right idea first helps us use a method that fits what the question asks.'
+  }
+  if (step.stepType === 'substitution') {
+    return 'Putting the known values into the formula connects the information in the problem to the quantity we need.'
+  }
+  return step.sequenceOrder < step.totalSteps
+    ? 'We calculate this value now because the next step needs it.'
+    : 'We calculate this value to finish answering the question.'
 }
 
 // ─── Adaptive error nudge messages ───────────────────────────────────────────
@@ -360,20 +366,38 @@ function ComprehensionQuiz({
             </div>
 
             {unknownResult === 'correct' && (
-              <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 flex items-center justify-between">
-                <p className="text-sm text-green-800 font-medium">✓ Exactly right. Now let&#39;s solve it.</p>
-                <button onClick={() => setComprehensionPhase('solving')}
-                  className="ml-4 shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-3 py-1.5">
-                  Start solving <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              <p className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 font-medium">
+                ✓ Exactly right. Before solving, let’s connect the useful details to the question.
+              </p>
             )}
             {unknownResult === 'wrong' && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 space-y-2">
-                <p className="text-sm text-red-700">✗ Not quite. The correct answer is highlighted above.</p>
+              <p className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                ✗ Not quite. The correct answer is highlighted above. Use this summary to see how the question is organized.
+              </p>
+            )}
+            {unknownResult !== 'unanswered' && (
+              <div className="rounded-lg border border-indigo-200 bg-white px-4 py-4 space-y-3">
+                <h3 className="text-sm font-semibold text-indigo-900">Read the question: what matters?</h3>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Given</p>
+                  {allGivens.length > 0 ? (
+                    <ul className="mt-1 space-y-1 text-sm text-gray-800">
+                      {allGivens.map((given, index) => <li key={`${index}-${given}`}>• {given}</li>)}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-sm text-gray-700">Use the facts stated in the problem.</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Asked</p>
+                  <p className="mt-1 text-sm text-gray-800">{problem.unknownAnnotation}</p>
+                </div>
+                <p className="text-sm text-indigo-900">
+                  <span className="font-semibold">Details that matter:</span> the given facts above are the values and relationships this solution uses to find what the question asks for.
+                </p>
                 <button onClick={() => setComprehensionPhase('solving')}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-3 py-1.5">
-                  Proceed to solving <ArrowRight className="w-3.5 h-3.5" />
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-3 py-2">
+                  Start solving <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
@@ -762,7 +786,9 @@ export default function GuidedPage() {
               </Badge>
               <span className="text-sm font-semibold text-foreground">{step.stepLabel}</span>
             </div>
-            <p className="text-xs text-muted-foreground">{STEP_TYPE_EXPLANATION[step.stepType]}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              <span className="font-semibold">Why this step?</span> {getStepPurpose(step)}
+            </p>
           </div>
         </div>
 
