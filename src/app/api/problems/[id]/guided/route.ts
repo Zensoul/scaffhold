@@ -22,18 +22,221 @@ type GuidedStepResponse = {
   inputType: 'mcq' | 'numeric'
   svgStage: number
   options: StepOption[]       // empty array for numeric steps
-  hintText: string | null     // only sent after ≥1 wrong attempt on this step
+  hintText: string           // available on request before the first attempt
   hintWasRephrased: boolean
   errorFeedback: string | null // only sent after a wrong attempt
   workedExample: {
     text: string
     svgStage: number
-  } | null                    // only sent after ≥3 wrong attempts
+  } | null                    // available on request when a safe example is present
   attemptCount: number        // how many times this student has tried this step
   totalSteps: number
   answeredSoFar: number       // how many steps the student has completed correctly
+  hintText2: string
+  hintText3: string
+  formulaCard: string | null
+  unit: string | null
+  conceptVideoUrl: string | null
+  socraticPrompt: string | null
 }
 
+type HintSafetyStep = {
+  sequenceOrder?: number
+  prompt?: string
+  inputType: 'mcq' | 'numeric'
+  correctAnswer: string
+  tolerance: number | null
+  stepType: 'concept' | 'substitution' | 'computation'
+  options: { optionText: string; isCorrect: boolean }[]
+  hintText?: string | null
+  hintText2?: string | null
+  hintText3?: string | null
+}
+
+function compactText(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '')
+}
+
+function revealsCorrectAnswer(text: string | null | undefined, step: HintSafetyStep): boolean {
+  if (!text?.trim()) return false
+
+  if (step.inputType === 'mcq') {
+    const correctOption = step.options.find((option) => option.isCorrect)?.optionText
+    const answer = correctOption ?? step.correctAnswer
+    const compactAnswer = compactText(answer)
+    return compactAnswer.length >= 2 && compactText(text).includes(compactAnswer)
+  }
+
+  const expected = Number(step.correctAnswer.trim().replace(/,/g, ''))
+  if (!Number.isFinite(expected)) {
+    const compactAnswer = compactText(step.correctAnswer)
+    return compactAnswer.length >= 3 && compactText(text).includes(compactAnswer)
+  }
+
+  const values = text.match(/[-+]?\d+(?:\.\d+)?/g)?.map(Number) ?? []
+  const tolerance = Math.max(step.tolerance ?? 0.01, 0.0001)
+  return values.some((value) => Math.abs(value - expected) <= tolerance)
+}
+
+function revealsLaterAnswer(
+  text: string | null | undefined,
+  currentStep: HintSafetyStep & { sequenceOrder?: number },
+  allSteps: HintSafetyStep[] = [],
+  problemText = '',
+): boolean {
+  if (!text?.trim()) return false
+
+  const normalizedText = compactText(text)
+  const knownProblemValues = problemText.match(/[-+]?\d+(?:\.\d+)?/g)?.map(Number) ?? []
+  const numericTokens = text.match(/[-+]?\d+(?:\.\d+)?/g)?.map(Number) ?? []
+
+  return allSteps.some((candidate) => {
+    if (
+      currentStep.sequenceOrder == null ||
+      candidate.sequenceOrder == null ||
+      candidate.sequenceOrder <= currentStep.sequenceOrder
+    ) return false
+
+    if (candidate.inputType === 'mcq') {
+      const answer = candidate.options.find((option) => option.isCorrect)?.optionText
+      const normalizedAnswer = answer ? compactText(answer) : ''
+      return normalizedAnswer.length >= 6 && normalizedText.includes(normalizedAnswer)
+    }
+
+    const expected = Number(candidate.correctAnswer.trim().replace(/,/g, ''))
+    if (!Number.isFinite(expected)) {
+      const normalizedAnswer = compactText(candidate.correctAnswer)
+      return normalizedAnswer.length >= 4 && normalizedText.includes(normalizedAnswer)
+    }
+
+    // A number already stated in the original question is a given, not a spoiler.
+    const tolerance = Math.max(candidate.tolerance ?? 0.01, 0.0001)
+    if (knownProblemValues.some((value) => Math.abs(value - expected) <= tolerance)) {
+      return false
+    }
+
+    return numericTokens.some((value) => Math.abs(value - expected) <= tolerance)
+  })
+}
+
+function revealsAnyStepAnswer(
+  text: string | null | undefined,
+  step: HintSafetyStep & { sequenceOrder?: number },
+  steps: HintSafetyStep[],
+  problemText: string,
+): boolean {
+  return revealsCorrectAnswer(text, step) || revealsLaterAnswer(text, step, steps, problemText)
+}
+
+function fallbackHint(step: HintSafetyStep, level: 1 | 2 | 3, problemText: string): string {
+  const context = `${problemText} ${step.prompt ?? ''}`.toLowerCase()
+  const has = (pattern: RegExp) => pattern.test(context)
+
+  if (step.stepType === 'concept') {
+    if (level === 1) return 'First name exactly what the question asks you to find. Is it a length, an area, a volume, or a relationship?'
+    if (has(/segment|sector|arc/)) {
+      return level === 2
+        ? 'For a circular part, decide whether the question asks about the curved boundary or the region inside it. Those use different measurements.'
+        : 'Check each choice against the requested quantity: boundary length and enclosed area are different, even when they use the same circle.'
+    }
+    if (has(/exposed|outer surface|total surface|fixed on|mounted on|joined|stuck to/)) {
+      return level === 2
+        ? 'For a joined solid, separate the parts and consider which faces are on the outside and which are hidden at the join.'
+        : 'Check that the method counts every outside face once and leaves out any shared face inside the solid.'
+    }
+    if (has(/not covered|uncovered|remaining|left after|between the/)) {
+      return level === 2
+        ? 'Sketch the whole region and the part that is removed or covered. Keep those two areas distinct.'
+        : 'Check that your choice finds the requested leftover region and uses the full region and removed region in the right relationship.'
+    }
+    return level === 2
+      ? 'Identify the shape or relationship described, then think about what information a method for the requested quantity needs.'
+      : 'Compare each method with the goal and the units. Rule out choices that calculate a different quantity or use the wrong kind of measurement.'
+  }
+
+  if (step.stepType === 'substitution') {
+    if (level === 1) return 'Match each letter or named quantity in the setup with the corresponding value given in the question.'
+    if (level === 2) {
+      return has(/diameter/)
+        ? 'Check whether the formula needs a radius or a diameter. Convert the given measurement only if the symbol requires it.'
+        : 'Keep each value attached to its symbol, including its sign and unit, as you place it into the setup.'
+    }
+    return 'Before evaluating, compare the substituted expression with the original setup: check signs, powers, brackets, and which quantity each value represents.'
+  }
+
+  if (level === 1) return 'Read the expression from the inside out. Identify the first power, bracket, or fraction to simplify.'
+  if (level === 2) return 'Work one operation at a time. Simplify exact fractions and powers before combining terms, and avoid rounding early.'
+  return 'Estimate the size of the result before accepting it. Then check the sign, decimal place, and requested unit against the original question.'
+}
+
+function getSafeHints(
+  step: HintSafetyStep & { sequenceOrder?: number },
+  steps: HintSafetyStep[],
+  problemText: string,
+): [string, string, string] {
+  const stored = [
+    (step as HintSafetyStep & { hintText?: string | null }).hintText,
+    (step as HintSafetyStep & { hintText2?: string | null }).hintText2,
+    (step as HintSafetyStep & { hintText3?: string | null }).hintText3,
+  ]
+
+  return [1, 2, 3].map((level) => {
+    const text = stored[level - 1]?.trim()
+    return text && !revealsAnyStepAnswer(text, step, steps, problemText)
+      ? text
+      : fallbackHint(step, level as 1 | 2 | 3, problemText)
+  }) as [string, string, string]
+}
+
+function getSafeFormulaCard(
+  step: HintSafetyStep & { id: string; sequenceOrder: number; formulaCard: string | null },
+  steps: (HintSafetyStep & { id: string; sequenceOrder: number; formulaCard: string | null })[],
+  completedStepIds: Set<string>,
+  problemText: string,
+): string | null {
+  // A formula-choice prompt must not display its own correct answer as a reference.
+  if (step.stepType === 'concept') return null
+
+  if (step.formulaCard && !revealsAnyStepAnswer(step.formulaCard, step, steps, problemText)) {
+    return step.formulaCard
+  }
+
+  const earlierSteps = steps
+    .filter((candidate) => candidate.sequenceOrder < step.sequenceOrder && completedStepIds.has(candidate.id))
+    .sort((a, b) => b.sequenceOrder - a.sequenceOrder)
+
+  for (const earlier of earlierSteps) {
+    if (earlier.stepType === 'concept') {
+      const chosenFormula = earlier.options.find((option) => option.isCorrect)?.optionText
+      if (chosenFormula && !revealsAnyStepAnswer(chosenFormula, step, steps, problemText)) return chosenFormula
+    }
+    if (earlier.formulaCard && !revealsAnyStepAnswer(earlier.formulaCard, step, steps, problemText)) {
+      return earlier.formulaCard
+    }
+  }
+
+  return null
+}
+
+function inferUnit(step: { unit: string | null; prompt: string }, problemText: string): string | null {
+  if (step.unit?.trim()) return step.unit.trim()
+
+  const text = `${step.prompt} ${problemText}`
+  const rate = text.match(/\b(?:km\/h|m\/s|cm\/s)\b/i)?.[0]
+  if (rate) return rate.toLowerCase()
+
+  const match = text.match(/\b(km|cm|mm|m|in|ft)\s*(²|³|\^2|\^3)?/i)
+  if (!match) return null
+
+  const base = match[1].toLowerCase()
+  const explicitPower = match[2]?.replace('^', '')
+  if (explicitPower) return `${base}${explicitPower}`
+
+  const target = step.prompt.toLowerCase()
+  if (/\b(volume|capacity)\b/.test(target)) return `${base}³`
+  if (/\b(area|surface area|segment area|sector area)\b/.test(target)) return `${base}²`
+  return base
+}
 // ─── GET /api/problems/[id]/guided?sessionId= ────────────────────────────────
 
 export async function GET(
@@ -227,6 +430,15 @@ export async function GET(
 
   const totalSteps = guidedProblem.steps.length
 
+  // An empty flow is a content gap, not a completed problem. Do not silently
+  // mark it complete; surface a recoverable response so the page can explain it.
+  if (totalSteps === 0) {
+    return NextResponse.json(
+      { error: 'Guided steps are not available for this problem yet.' },
+      { status: 409 },
+    )
+  }
+
   // Find which steps the student has already answered correctly in this session
   const attemptCounts = new Map<string, { correct: number; wrong: number }>()
   for (const group of attemptGroups) {
@@ -276,11 +488,23 @@ export async function GET(
   const isFinalNumericStep =
     nextStep.inputType === 'numeric' &&
     nextStep.sequenceOrder === totalSteps
-  const showHint = attemptCount >= 1
-  const showWorkedExample =
-    !isFinalNumericStep &&
-    attemptCount >= 3 &&
-    nextStep.workedExampleText != null
+  const hints = getSafeHints(nextStep, guidedProblem.steps, guidedProblem.problem.rawText)
+  const formulaCard = getSafeFormulaCard(
+    nextStep,
+    guidedProblem.steps,
+    correctStepIds,
+    guidedProblem.problem.rawText,
+  )
+  const unit = inferUnit(nextStep, guidedProblem.problem.rawText)
+  const safeExample = nextStep.workedExampleText && !revealsAnyStepAnswer(
+    nextStep.workedExampleText,
+    nextStep,
+    guidedProblem.steps,
+    guidedProblem.problem.rawText,
+  )
+    ? nextStep.workedExampleText
+    : null
+  const showWorkedExample = !isFinalNumericStep && safeExample !== null
 
   return NextResponse.json({
     problemComplete: false,
@@ -300,17 +524,24 @@ export async function GET(
         optionText: o.optionText,
         orderIndex: o.orderIndex,
       })),
-      hintText: showHint
-        ? isFinalNumericStep
-          ? 'Recalculate the expression one operation at a time. Check signs, brackets, and decimal placement.'
-          : nextStep.hintText
-        : null,
+      hintText: hints[0],
+      hintText2: hints[1],
+      hintText3: hints[2],
+      formulaCard,
+      unit,
+      conceptVideoUrl: nextStep.conceptVideoUrl,
+      socraticPrompt: revealsAnyStepAnswer(
+        nextStep.socraticPrompt,
+        nextStep,
+        guidedProblem.steps,
+        guidedProblem.problem.rawText,
+      ) ? null : nextStep.socraticPrompt,
       hintWasRephrased: false,
       errorFeedback: null,   // only included in POST response after a wrong answer
       workedExample:
         showWorkedExample
           ? {
-              text: nextStep.workedExampleText!,
+              text: safeExample!,
               svgStage: nextStep.workedExampleSvgStage ?? nextStep.svgStage,
             }
           : null,
@@ -368,7 +599,15 @@ export async function POST(
       where: { id: stepId },
       include: {
         guidedSolveProblem: {
-          select: { problemId: true, _count: { select: { steps: true } } },
+          select: {
+            problemId: true,
+            problem: { select: { rawText: true } },
+            _count: { select: { steps: true } },
+            steps: {
+              orderBy: { sequenceOrder: 'asc' },
+              include: { options: true },
+            },
+          },
         },
         options: true,
       },
@@ -468,26 +707,33 @@ export async function POST(
   const isFinalNumericStep =
     step.inputType === 'numeric' &&
     step.sequenceOrder === step.guidedSolveProblem._count.steps
-  const showHint = newWrongCount >= 1
-  const showWorkedExample =
-    !isFinalNumericStep &&
-    newWrongCount >= 3 &&
-    step.workedExampleText != null
+  const allSteps = step.guidedSolveProblem.steps
+  const problemText = step.guidedSolveProblem.problem.rawText
+  const hints = getSafeHints(step, allSteps, problemText)
+  const safeExample = step.workedExampleText && !revealsAnyStepAnswer(
+    step.workedExampleText,
+    step,
+    allSteps,
+    problemText,
+  )
+    ? step.workedExampleText
+    : null
+  const showWorkedExample = !isFinalNumericStep && safeExample !== null
 
   return NextResponse.json({
     isCorrect: false,
     errorFeedback: isFinalNumericStep
       ? 'The earlier steps are complete. Check the arithmetic in this final expression one operation at a time.'
-      : step.errorFeedback,
-    hintText: showHint
-      ? isFinalNumericStep
-        ? 'Recalculate the expression one operation at a time. Check signs, brackets, and decimal placement.'
-        : step.hintText
-      : null,
+      : revealsAnyStepAnswer(step.errorFeedback, step, allSteps, problemText)
+        ? 'Re-read the prompt and check each part of your method before trying again.'
+        : step.errorFeedback,
+    hintText: hints[0],
+    hintText2: hints[1],
+    hintText3: hints[2],
     workedExample:
       showWorkedExample
         ? {
-            text: step.workedExampleText!,
+            text: safeExample!,
             svgStage: step.workedExampleSvgStage ?? step.svgStage,
           }
         : null,

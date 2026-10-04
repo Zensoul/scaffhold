@@ -423,6 +423,7 @@ export default function GuidedPage() {
 
   const [data, setData] = useState<GetResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [showProblem, setShowProblem] = useState(true)
 
@@ -475,18 +476,19 @@ export default function GuidedPage() {
   // Diagram stage — updated from step or worked example
   const [diagramStage, setDiagramStage] = useState(0)
   const [showWorkedExamplePanel, setShowWorkedExamplePanel] = useState(false)
-  const [showFirstHint, setShowFirstHint] = useState(false)
+  const [visibleHintLevel, setVisibleHintLevel] = useState(0)
   const workedExampleRef = useRef<HTMLDivElement>(null)
   const [correctFlash, setCorrectFlash] = useState(false)
 
   // ── Fetch current step ─────────────────────────────────────────────────────
   async function fetchStep() {
     setLoading(true)
+    setLoadError(null)
     setFeedback(null)
     setSelectedOption('')
     setNumericAnswer('')
     setShowWorkedExamplePanel(false)
-    setShowFirstHint(false)
+    setVisibleHintLevel(0)
     setSelfExplainResult(null)
     setSelfExplainText('')
     setSelfExplainSubmitted(false)
@@ -530,6 +532,9 @@ export default function GuidedPage() {
         setConfidenceGatePassed(!isConcept)
         setConfidenceUnsure(false)
       }
+    } catch (error) {
+      setData(null)
+      setLoadError(error instanceof Error ? error.message : 'This guided problem could not be loaded.')
     } finally {
       setLoading(false)
     }
@@ -567,6 +572,7 @@ export default function GuidedPage() {
           fetchStep()
         }, 250)
       } else {
+        setVisibleHintLevel((level) => Math.max(level, 1))
         setFeedback({
           errorFeedback: json.errorFeedback,
           errorType: json.errorType,
@@ -614,7 +620,20 @@ export default function GuidedPage() {
     )
   }
 
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="max-w-lg text-muted-foreground">
+          {loadError?.includes('Guided steps are not available')
+            ? 'Guided help for this problem is still being prepared. Please choose another problem for now.'
+            : loadError ?? 'This guided problem could not be loaded.'}
+        </p>
+        <Button onClick={() => window.location.href = '/student-dashboard'} variant="outline">
+          Back to problems
+        </Button>
+      </div>
+    )
+  }
 
   const allGivens = (() => {
     const givens = data.problem.givens
@@ -684,9 +703,14 @@ export default function GuidedPage() {
   const activePrerequisiteSupport = feedback?.prerequisiteSupport ?? step.prerequisiteSupport
 
   // Active hint levels — merge GET (persisted) with POST (fresh feedback)
-  const activeHint1 = feedback?.hintText ?? (showFirstHint ? step.hintText : null)
-  const activeHint2 = feedback?.hintText2 ?? step.hintText2
-  const activeHint3 = feedback?.hintText3 ?? step.hintText3
+  const hintTexts = [
+    feedback?.hintText ?? step.hintText,
+    feedback?.hintText2 ?? step.hintText2,
+    feedback?.hintText3 ?? step.hintText3,
+  ]
+  const activeHint1 = visibleHintLevel >= 1 ? hintTexts[0] : null
+  const activeHint2 = visibleHintLevel >= 2 ? hintTexts[1] : null
+  const activeHint3 = visibleHintLevel >= 3 ? hintTexts[2] : null
 
   // Formula card from GET response
   const formulaCard = step.formulaCard
@@ -954,6 +978,7 @@ export default function GuidedPage() {
                     variant="outline"
                     onClick={() => {
                       setConfidenceUnsure(true)
+                      setVisibleHintLevel((level) => Math.max(level, 1))
                       if (activeWorkedExample) {
                         setShowWorkedExamplePanel(!activePrerequisiteSupport)
                         setHasViewedWorkedExample(true)
@@ -968,7 +993,7 @@ export default function GuidedPage() {
               ) : (
                 <div className="space-y-3">
                   {/* Show formula card inline if no worked example exists for this step */}
-                  {!activeWorkedExample && formulaCard && (
+                  {!activeWorkedExample && step.stepType !== 'concept' && formulaCard && (
                     <div className="rounded-md bg-white border border-purple-200 px-3 py-2">
                       <p className="text-xs font-semibold text-purple-700 mb-1">Key formula</p>
                       <p className="text-sm text-purple-900 font-mono">{formulaCard}</p>
@@ -1034,9 +1059,9 @@ export default function GuidedPage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 className="max-w-[220px]"
               />
-              <span className="text-sm text-muted-foreground self-center">
-                {step.unit ?? 'cm²'}
-              </span>
+              {step.unit && (
+                <span className="text-sm text-muted-foreground self-center">{step.unit}</span>
+              )}
             </div>
           )}
 
@@ -1045,7 +1070,7 @@ export default function GuidedPage() {
             <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 flex gap-3">
               <Lightbulb className="w-5 h-5 text-yellow-600 mt-0.5 shrink-0" />
               <div className="space-y-2">
-                <p className="text-sm text-yellow-800">{activeHint1}</p>
+                {activeHint1 && <p className="text-sm text-yellow-800">{activeHint1}</p>}
                 {activeHint2 && (
                   <p className="text-sm text-yellow-700 border-t border-yellow-200 pt-2">{activeHint2}</p>
                 )}
@@ -1205,9 +1230,9 @@ export default function GuidedPage() {
 
         {/* Submit button */}
         <div className="border-t px-6 py-4 bg-white">
-          {!activeHint1 && step.hintText && confidenceGatePassed && (
-            <Button type="button" variant="outline" onClick={() => setShowFirstHint(true)} className="mr-2">
-              Give me a hint
+          {visibleHintLevel < 3 && hintTexts[visibleHintLevel] && confidenceGatePassed && (
+            <Button type="button" variant="outline" onClick={() => setVisibleHintLevel((level) => Math.min(level + 1, 3))} className="mr-2">
+              {visibleHintLevel === 0 ? 'Give me a hint' : 'Show another hint'}
             </Button>
           )}
           <Button
